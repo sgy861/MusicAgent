@@ -1,0 +1,144 @@
+version: '3.8'
+
+services:
+  # 1. MySQL 数据库服务
+  mysql:
+    image: mysql:8.0
+    container_name: easymusic-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "12345"
+      MYSQL_DATABASE: "easymusic"
+    volumes:
+      # 将初始化 SQL 挂载到容器，启动时自动导入表结构和数据
+      - ./easymusic.sql:/docker-entrypoint-initdb.d/easymusic.sql
+      - mysql_data:/var/lib/mysql
+    restart: always
+
+  # 2. Redis 缓存服务
+  redis:
+    image: redis:7.0-alpine
+    container_name: easymusic-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+
+  # 3. RabbitMQ 消息队列服务 (带管理界面)
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: easymusic-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: always
+
+  # 4. Milvus 向量数据库依赖：etcd
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    container_name: easymusic-milvus-etcd
+    environment:
+      - ETCD_AUTO_COMPACTION_RETENTION=true
+      - ETCD_AUTO_COMPACTION_RETENTION_INTERVAL=1
+    volumes:
+      - etcd_data:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls=http://0.0.0.0:2379 --data-dir /etcd
+
+  # 5. Milvus 向量数据库依赖：MinIO 对象存储
+  minio:
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    container_name: easymusic-milvus-minio
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    ports:
+      - "9001:9001"
+      - "9000:9000"
+    command: minio server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+
+  # 6. Milvus Standalone 向量数据库
+  milvus:
+    image: milvusdb/milvus:v2.3.5
+    container_name: easymusic-milvus
+    command: milvus run standalone
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    ports:
+      - "19530:19530"
+    depends_on:
+      - etcd
+      - minio
+    volumes:
+      - milvus_data:/var/lib/milvus
+
+  # 7. Java Web 用户接口服务 (包含 Netty)
+  easymusic-web:
+    build: ./easymusic-java/easymusic-web
+    container_name: easymusic-web
+    ports:
+      - "8090:8090"
+      - "8099:8099"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/easymusic?allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2B8&characterEncoding=utf8
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - MILVUS_HOST=milvus
+    depends_on:
+      - mysql
+      - redis
+      - rabbitmq
+      - milvus
+    restart: always
+
+  # 8. Java Admin 管理后台接口服务
+  easymusic-admin:
+    build: ./easymusic-java/easymusic-admin
+    container_name: easymusic-admin
+    ports:
+      - "8091:8091"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/easymusic?allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2B8&characterEncoding=utf8
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - MILVUS_HOST=milvus
+    depends_on:
+      - mysql
+      - redis
+      - rabbitmq
+      - milvus
+    restart: always
+
+  # 9. Frontend 用户端前端网站 (使用 Nginx 反向代理)
+  easymusic-front-web:
+    build: ./easymusic-front/easymusic-front-web
+    container_name: easymusic-front-web
+    ports:
+      - "80:80"
+    depends_on:
+      - easymusic-web
+    restart: always
+
+  # 10. Frontend 管理端前端网站 (使用 Nginx 反向代理)
+  easymusic-front-admin:
+    build: ./easymusic-front/easymusic-front-admin
+    container_name: easymusic-front-admin
+    ports:
+      - "8082:80"
+    depends_on:
+      - easymusic-admin
+    restart: always
+
+volumes:
+  mysql_data:
+  redis_data:
+  rabbitmq_data:
+  etcd_data:
+  minio_data:
+  milvus_data:

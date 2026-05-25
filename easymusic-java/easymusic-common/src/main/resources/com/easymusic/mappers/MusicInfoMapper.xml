@@ -1,0 +1,708 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.easymusic.mappers.MusicInfoMapper">
+
+    <!--实体映射-->
+    <resultMap id="base_result_map" type="com.easymusic.entity.po.MusicInfo">
+        <!--音乐ID-->
+        <result column="music_id" property="musicId"/>
+        <!--用户ID-->
+        <result column="user_id" property="userId"/>
+        <!--任务ID-->
+        <result column="task_id" property="taskId"/>
+        <!--创作ID-->
+        <result column="creation_id" property="creationId"/>
+        <!--标题-->
+        <result column="music_title" property="musicTitle"/>
+        <!--封面-->
+        <result column="cover" property="cover"/>
+        <!--音乐地址-->
+        <result column="audio_path" property="audioPath"/>
+        <!--持续时间-->
+        <result column="duration" property="duration"/>
+        <!--歌词-->
+        <result column="lyrics" property="lyrics"/>
+        <!--播放数量-->
+        <result column="play_count" property="playCount"/>
+        <!--点赞数-->
+        <result column="good_count" property="goodCount"/>
+        <!--0:未推荐 1:已推荐-->
+        <result column="commend_type" property="commendType"/>
+        <!--创建时间-->
+        <result column="create_time" property="createTime"/>
+        <!--0:生成音乐中 1:生成完毕-->
+        <result column="music_status" property="musicStatus"/>
+        <!--音乐类型 0:音乐 1:纯音乐-->
+        <result column="music_type" property="musicType"/>
+    </resultMap>
+
+
+    <!-- 通用查询结果列-->
+    <sql id="base_column_list">
+        m.music_id,m.user_id,m.task_id,m.creation_id,m.music_title,
+        m.cover,m.audio_path,m.duration,m.lyrics,m.play_count,
+        m.good_count,m.commend_type,m.create_time,m.music_status,m.music_type
+
+    </sql>
+
+    <sql id="base_condition_filed">
+        <if test="query.musicId != null and query.musicId!=''">
+            and m.music_id = #{query.musicId}
+        </if>
+        <if test="query.userId != null and query.userId!=''">
+            and m.user_id = #{query.userId}
+        </if>
+        <if test="query.taskId != null and query.taskId!=''">
+            and m.task_id = #{query.taskId}
+        </if>
+        <if test="query.creationId != null and query.creationId!=''">
+            and m.creation_id = #{query.creationId}
+        </if>
+        <if test="query.musicTitle != null and query.musicTitle!=''">
+            and m.music_title = #{query.musicTitle}
+        </if>
+        <if test="query.cover != null and query.cover!=''">
+            and m.cover = #{query.cover}
+        </if>
+        <if test="query.audioPath != null and query.audioPath!=''">
+            and m.audio_path = #{query.audioPath}
+        </if>
+        <if test="query.duration != null">
+            and m.duration = #{query.duration}
+        </if>
+        <if test="query.lyrics != null and query.lyrics!=''">
+            and m.lyrics = #{query.lyrics}
+        </if>
+        <if test="query.playCount != null">
+            and m.play_count = #{query.playCount}
+        </if>
+        <if test="query.goodCount != null">
+            and m.good_count = #{query.goodCount}
+        </if>
+        <if test="query.commendType != null">
+            and m.commend_type = #{query.commendType}
+        </if>
+        <if test="query.createTime != null and query.createTime!=''">
+            <![CDATA[ and  m.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+        </if>
+        <if test="query.musicStatus != null">
+            and m.music_status = #{query.musicStatus}
+        </if>
+        <if test="query.musicType != null">
+            and m.music_type = #{query.musicType}
+        </if>
+    </sql>
+
+    <!-- 通用查询条件列-->
+    <sql id="query_condition">
+        <where>
+            <include refid="base_condition_filed"/>
+            <if test="query.musicIdFuzzy!= null  and query.musicIdFuzzy!=''">
+                and m.music_id like concat('%', #{query.musicIdFuzzy}, '%')
+            </if>
+            <if test="query.userIdFuzzy!= null  and query.userIdFuzzy!=''">
+                and m.user_id like concat('%', #{query.userIdFuzzy}, '%')
+            </if>
+            <if test="query.taskIdFuzzy!= null  and query.taskIdFuzzy!=''">
+                and m.task_id like concat('%', #{query.taskIdFuzzy}, '%')
+            </if>
+            <if test="query.creationIdFuzzy!= null  and query.creationIdFuzzy!=''">
+                and m.creation_id like concat('%', #{query.creationIdFuzzy}, '%')
+            </if>
+            <if test="query.musicTitleFuzzy!= null  and query.musicTitleFuzzy!=''">
+                and m.music_title like concat('%', #{query.musicTitleFuzzy}, '%')
+            </if>
+            <if test="query.coverFuzzy!= null  and query.coverFuzzy!=''">
+                and m.cover like concat('%', #{query.coverFuzzy}, '%')
+            </if>
+            <if test="query.audioPathFuzzy!= null  and query.audioPathFuzzy!=''">
+                and m.audio_path like concat('%', #{query.audioPathFuzzy}, '%')
+            </if>
+            <if test="query.lyricsFuzzy!= null  and query.lyricsFuzzy!=''">
+                and m.lyrics like concat('%', #{query.lyricsFuzzy}, '%')
+            </if>
+            <if test="query.createTimeStart!= null and query.createTimeStart!=''">
+                <![CDATA[ and  m.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+            </if>
+            <if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+                <![CDATA[ and  m.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+            </if>
+            <if test="query.musicIdList!=null and query.musicIdList.size()>0">
+                and m.music_id in(<foreach collection="query.musicIdList" item="item" separator=",">#{item}</foreach>)
+            </if>
+            <!--查询我点赞的音乐-->
+            <if test="query.likeUserId!=null and query.likeUserId!=''">
+                and mia.user_id = #{query.likeUserId}
+            </if>
+        </where>
+    </sql>
+
+    <!-- 查询集合-->
+    <select id="selectList" resultMap="base_result_map">
+        SELECT
+        <include refid="base_column_list"/>
+        <if test="query.queryUser">
+            ,u.nick_name,u.avatar
+        </if>
+        <if test="query.currentUserId!=null">
+            ,(SELECT EXISTS (
+            SELECT 1
+            FROM music_info_action ma
+            WHERE ma.music_id = m.music_id AND ma.user_id = #{query.currentUserId}
+            )) as doGood
+        </if>
+        FROM music_info m
+        <if test="query.queryUser">
+            left join user_info u on u.user_id = m.user_id
+        </if>
+        <if test="query.queryLikeMusic">
+            inner join music_info_action mia on mia.music_id = m.music_id
+        </if>
+        <include refid="query_condition"/>
+        <if test="query.orderBy!=null">
+            order by ${query.orderBy}
+        </if>
+        <if test="query.simplePage!=null">
+            limit #{query.simplePage.start},#{query.simplePage.end}
+        </if>
+    </select>
+
+    <!-- 查询数量-->
+    <select id="selectCount" resultType="java.lang.Integer">
+        SELECT count(1) FROM music_info m
+        <if test="query.queryLikeMusic">
+            inner join music_info_action mia on mia.music_id = m.music_id
+        </if>
+        <include refid="query_condition"/>
+    </select>
+
+    <!-- 插入 （匹配有值的字段）-->
+    <insert id="insert" parameterType="com.easymusic.entity.po.MusicInfo">
+        INSERT INTO music_info
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.musicId != null">
+                music_id,
+            </if>
+            <if test="bean.userId != null">
+                user_id,
+            </if>
+            <if test="bean.taskId != null">
+                task_id,
+            </if>
+            <if test="bean.creationId != null">
+                creation_id,
+            </if>
+            <if test="bean.musicTitle != null">
+                music_title,
+            </if>
+            <if test="bean.cover != null">
+                cover,
+            </if>
+            <if test="bean.audioPath != null">
+                audio_path,
+            </if>
+            <if test="bean.duration != null">
+                duration,
+            </if>
+            <if test="bean.lyrics != null">
+                lyrics,
+            </if>
+            <if test="bean.playCount != null">
+                play_count,
+            </if>
+            <if test="bean.goodCount != null">
+                good_count,
+            </if>
+            <if test="bean.commendType != null">
+                commend_type,
+            </if>
+            <if test="bean.createTime != null">
+                create_time,
+            </if>
+            <if test="bean.musicStatus != null">
+                music_status,
+            </if>
+            <if test="bean.musicType != null">
+                music_type,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.musicId!=null">
+                #{bean.musicId},
+            </if>
+            <if test="bean.userId!=null">
+                #{bean.userId},
+            </if>
+            <if test="bean.taskId!=null">
+                #{bean.taskId},
+            </if>
+            <if test="bean.creationId!=null">
+                #{bean.creationId},
+            </if>
+            <if test="bean.musicTitle!=null">
+                #{bean.musicTitle},
+            </if>
+            <if test="bean.cover!=null">
+                #{bean.cover},
+            </if>
+            <if test="bean.audioPath!=null">
+                #{bean.audioPath},
+            </if>
+            <if test="bean.duration!=null">
+                #{bean.duration},
+            </if>
+            <if test="bean.lyrics!=null">
+                #{bean.lyrics},
+            </if>
+            <if test="bean.playCount!=null">
+                #{bean.playCount},
+            </if>
+            <if test="bean.goodCount!=null">
+                #{bean.goodCount},
+            </if>
+            <if test="bean.commendType!=null">
+                #{bean.commendType},
+            </if>
+            <if test="bean.createTime!=null">
+                #{bean.createTime},
+            </if>
+            <if test="bean.musicStatus!=null">
+                #{bean.musicStatus},
+            </if>
+            <if test="bean.musicType!=null">
+                #{bean.musicType},
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 插入或者更新 （匹配有值的字段）-->
+    <insert id="insertOrUpdate" parameterType="com.easymusic.entity.po.MusicInfo">
+        INSERT INTO music_info
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.musicId != null">
+                music_id,
+            </if>
+            <if test="bean.userId != null">
+                user_id,
+            </if>
+            <if test="bean.taskId != null">
+                task_id,
+            </if>
+            <if test="bean.creationId != null">
+                creation_id,
+            </if>
+            <if test="bean.musicTitle != null">
+                music_title,
+            </if>
+            <if test="bean.cover != null">
+                cover,
+            </if>
+            <if test="bean.audioPath != null">
+                audio_path,
+            </if>
+            <if test="bean.duration != null">
+                duration,
+            </if>
+            <if test="bean.lyrics != null">
+                lyrics,
+            </if>
+            <if test="bean.playCount != null">
+                play_count,
+            </if>
+            <if test="bean.goodCount != null">
+                good_count,
+            </if>
+            <if test="bean.commendType != null">
+                commend_type,
+            </if>
+            <if test="bean.createTime != null">
+                create_time,
+            </if>
+            <if test="bean.musicStatus != null">
+                music_status,
+            </if>
+            <if test="bean.musicType != null">
+                music_type,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.musicId!=null">
+                #{bean.musicId},
+            </if>
+            <if test="bean.userId!=null">
+                #{bean.userId},
+            </if>
+            <if test="bean.taskId!=null">
+                #{bean.taskId},
+            </if>
+            <if test="bean.creationId!=null">
+                #{bean.creationId},
+            </if>
+            <if test="bean.musicTitle!=null">
+                #{bean.musicTitle},
+            </if>
+            <if test="bean.cover!=null">
+                #{bean.cover},
+            </if>
+            <if test="bean.audioPath!=null">
+                #{bean.audioPath},
+            </if>
+            <if test="bean.duration!=null">
+                #{bean.duration},
+            </if>
+            <if test="bean.lyrics!=null">
+                #{bean.lyrics},
+            </if>
+            <if test="bean.playCount!=null">
+                #{bean.playCount},
+            </if>
+            <if test="bean.goodCount!=null">
+                #{bean.goodCount},
+            </if>
+            <if test="bean.commendType!=null">
+                #{bean.commendType},
+            </if>
+            <if test="bean.createTime!=null">
+                #{bean.createTime},
+            </if>
+            <if test="bean.musicStatus!=null">
+                #{bean.musicStatus},
+            </if>
+            <if test="bean.musicType!=null">
+                #{bean.musicType},
+            </if>
+        </trim>
+        on DUPLICATE key update
+        <trim prefix="" suffix="" suffixOverrides=",">
+            <if test="bean.musicId!=null">
+                music_id = VALUES(music_id),
+            </if>
+            <if test="bean.userId!=null">
+                user_id = VALUES(user_id),
+            </if>
+            <if test="bean.taskId!=null">
+                task_id = VALUES(task_id),
+            </if>
+            <if test="bean.creationId!=null">
+                creation_id = VALUES(creation_id),
+            </if>
+            <if test="bean.musicTitle!=null">
+                music_title = VALUES(music_title),
+            </if>
+            <if test="bean.cover!=null">
+                cover = VALUES(cover),
+            </if>
+            <if test="bean.audioPath!=null">
+                audio_path = VALUES(audio_path),
+            </if>
+            <if test="bean.duration!=null">
+                duration = VALUES(duration),
+            </if>
+            <if test="bean.lyrics!=null">
+                lyrics = VALUES(lyrics),
+            </if>
+            <if test="bean.playCount!=null">
+                play_count = VALUES(play_count),
+            </if>
+            <if test="bean.goodCount!=null">
+                good_count = VALUES(good_count),
+            </if>
+            <if test="bean.commendType!=null">
+                commend_type = VALUES(commend_type),
+            </if>
+            <if test="bean.createTime!=null">
+                create_time = VALUES(create_time),
+            </if>
+            <if test="bean.musicStatus!=null">
+                music_status = VALUES(music_status),
+            </if>
+            <if test="bean.musicType!=null">
+                music_type = VALUES(music_type),
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 添加 （批量插入）-->
+    <insert id="insertBatch" parameterType="com.easymusic.entity.po.MusicInfo">
+        INSERT INTO music_info(
+        music_id,
+        user_id,
+        task_id,
+        creation_id,
+        music_title,
+        cover,
+        audio_path,
+        duration,
+        lyrics,
+        play_count,
+        good_count,
+        commend_type,
+        create_time,
+        music_status,
+        music_type
+        )values
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.musicId},
+            #{item.userId},
+            #{item.taskId},
+            #{item.creationId},
+            #{item.musicTitle},
+            #{item.cover},
+            #{item.audioPath},
+            #{item.duration},
+            #{item.lyrics},
+            #{item.playCount},
+            #{item.goodCount},
+            #{item.commendType},
+            #{item.createTime},
+            #{item.musicStatus},
+            #{item.musicType}
+            )
+        </foreach>
+    </insert>
+
+    <!-- 批量新增修改 （批量插入）-->
+    <insert id="insertOrUpdateBatch" parameterType="com.easymusic.entity.po.MusicInfo">
+        INSERT INTO music_info(
+        music_id,
+        user_id,
+        task_id,
+        creation_id,
+        music_title,
+        cover,
+        audio_path,
+        duration,
+        lyrics,
+        play_count,
+        good_count,
+        commend_type,
+        create_time,
+        music_status,
+        music_type
+        )values
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.musicId},
+            #{item.userId},
+            #{item.taskId},
+            #{item.creationId},
+            #{item.musicTitle},
+            #{item.cover},
+            #{item.audioPath},
+            #{item.duration},
+            #{item.lyrics},
+            #{item.playCount},
+            #{item.goodCount},
+            #{item.commendType},
+            #{item.createTime},
+            #{item.musicStatus},
+            #{item.musicType}
+            )
+        </foreach>
+        on DUPLICATE key update
+        music_id = VALUES(music_id),
+        user_id = VALUES(user_id),
+        task_id = VALUES(task_id),
+        creation_id = VALUES(creation_id),
+        music_title = VALUES(music_title),
+        cover = VALUES(cover),
+        audio_path = VALUES(audio_path),
+        duration = VALUES(duration),
+        lyrics = VALUES(lyrics),
+        play_count = VALUES(play_count),
+        good_count = VALUES(good_count),
+        commend_type = VALUES(commend_type),
+        create_time = VALUES(create_time),
+        music_status = VALUES(music_status),
+        music_type = VALUES(music_type)
+    </insert>
+
+    <!--多条件修改-->
+    <update id="updateByParam" parameterType="com.easymusic.entity.query.MusicInfoQuery">
+        UPDATE music_info m
+        <set>
+            <if test="bean.musicId != null">
+                music_id = #{bean.musicId},
+            </if>
+            <if test="bean.userId != null">
+                user_id = #{bean.userId},
+            </if>
+            <if test="bean.taskId != null">
+                task_id = #{bean.taskId},
+            </if>
+            <if test="bean.creationId != null">
+                creation_id = #{bean.creationId},
+            </if>
+            <if test="bean.musicTitle != null">
+                music_title = #{bean.musicTitle},
+            </if>
+            <if test="bean.cover != null">
+                cover = #{bean.cover},
+            </if>
+            <if test="bean.audioPath != null">
+                audio_path = #{bean.audioPath},
+            </if>
+            <if test="bean.duration != null">
+                duration = #{bean.duration},
+            </if>
+            <if test="bean.lyrics != null">
+                lyrics = #{bean.lyrics},
+            </if>
+            <if test="bean.playCount != null">
+                play_count = #{bean.playCount},
+            </if>
+            <if test="bean.goodCount != null">
+                good_count = #{bean.goodCount},
+            </if>
+            <if test="bean.commendType != null">
+                commend_type = #{bean.commendType},
+            </if>
+            <if test="bean.createTime != null">
+                create_time = #{bean.createTime},
+            </if>
+            <if test="bean.musicStatus != null">
+                music_status = #{bean.musicStatus},
+            </if>
+            <if test="bean.musicType != null">
+                music_type = #{bean.musicType},
+            </if>
+        </set>
+        <include refid="query_condition"/>
+    </update>
+
+    <!--多条件删除-->
+    <delete id="deleteByParam">
+        delete m from music_info m
+        <include refid="query_condition"/>
+    </delete>
+
+    <!-- 根据MusicId修改-->
+    <update id="updateByMusicId" parameterType="com.easymusic.entity.po.MusicInfo">
+        UPDATE music_info
+        <set>
+            <if test="bean.userId != null">
+                user_id = #{bean.userId},
+            </if>
+            <if test="bean.taskId != null">
+                task_id = #{bean.taskId},
+            </if>
+            <if test="bean.creationId != null">
+                creation_id = #{bean.creationId},
+            </if>
+            <if test="bean.musicTitle != null">
+                music_title = #{bean.musicTitle},
+            </if>
+            <if test="bean.cover != null">
+                cover = #{bean.cover},
+            </if>
+            <if test="bean.audioPath != null">
+                audio_path = #{bean.audioPath},
+            </if>
+            <if test="bean.duration != null">
+                duration = #{bean.duration},
+            </if>
+            <if test="bean.lyrics != null">
+                lyrics = #{bean.lyrics},
+            </if>
+            <if test="bean.playCount != null">
+                play_count = #{bean.playCount},
+            </if>
+            <if test="bean.goodCount != null">
+                good_count = #{bean.goodCount},
+            </if>
+            <if test="bean.commendType != null">
+                commend_type = #{bean.commendType},
+            </if>
+            <if test="bean.createTime != null">
+                create_time = #{bean.createTime},
+            </if>
+            <if test="bean.musicStatus != null">
+                music_status = #{bean.musicStatus},
+            </if>
+            <if test="bean.musicType != null">
+                music_type = #{bean.musicType},
+            </if>
+        </set>
+        where music_id=#{musicId}
+    </update>
+
+    <!-- 根据MusicId删除-->
+    <delete id="deleteByMusicId">
+        delete from music_info where music_id=#{musicId}
+    </delete>
+
+    <!-- 根据PrimaryKey获取对象-->
+    <select id="selectByMusicId" resultMap="base_result_map">
+        select
+        <include refid="base_column_list"/>
+        from music_info m where music_id=#{musicId}
+    </select>
+
+    <!-- 根据TaskId修改-->
+    <update id="updateByTaskId" parameterType="com.easymusic.entity.po.MusicInfo">
+        UPDATE music_info
+        <set>
+            <if test="bean.musicId != null">
+                music_id = #{bean.musicId},
+            </if>
+            <if test="bean.userId != null">
+                user_id = #{bean.userId},
+            </if>
+            <if test="bean.creationId != null">
+                creation_id = #{bean.creationId},
+            </if>
+            <if test="bean.musicTitle != null">
+                music_title = #{bean.musicTitle},
+            </if>
+            <if test="bean.cover != null">
+                cover = #{bean.cover},
+            </if>
+            <if test="bean.audioPath != null">
+                audio_path = #{bean.audioPath},
+            </if>
+            <if test="bean.duration != null">
+                duration = #{bean.duration},
+            </if>
+            <if test="bean.lyrics != null">
+                lyrics = #{bean.lyrics},
+            </if>
+            <if test="bean.playCount != null">
+                play_count = #{bean.playCount},
+            </if>
+            <if test="bean.goodCount != null">
+                good_count = #{bean.goodCount},
+            </if>
+            <if test="bean.commendType != null">
+                commend_type = #{bean.commendType},
+            </if>
+            <if test="bean.createTime != null">
+                create_time = #{bean.createTime},
+            </if>
+            <if test="bean.musicStatus != null">
+                music_status = #{bean.musicStatus},
+            </if>
+            <if test="bean.musicType != null">
+                music_type = #{bean.musicType},
+            </if>
+        </set>
+        where task_id=#{taskId}
+    </update>
+
+    <!-- 根据TaskId删除-->
+    <delete id="deleteByTaskId">
+        delete from music_info where task_id=#{taskId}
+    </delete>
+
+    <!-- 根据PrimaryKey获取对象-->
+    <select id="selectByTaskId" resultMap="base_result_map">
+        select
+        <include refid="base_column_list"/>
+        from music_info m where task_id=#{taskId}
+    </select>
+
+    <update id="updateMusicCount">
+        update music_info set play_count = play_count+1 where music_id = #{musicId}
+    </update>
+</mapper>

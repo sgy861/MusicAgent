@@ -1,0 +1,532 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.easymusic.mappers.PayOrderInfoMapper">
+
+    <!--实体映射-->
+    <resultMap id="base_result_map" type="com.easymusic.entity.po.PayOrderInfo">
+        <!--支付了行-->
+        <result column="order_id" property="orderId"/>
+        <!--用户ID-->
+        <result column="user_id" property="userId"/>
+        <!--商品ID-->
+        <result column="product_id" property="productId"/>
+        <!--商品名称-->
+        <result column="product_name" property="productName"/>
+        <!--金额-->
+        <result column="amount" property="amount"/>
+        <!--支付通道订单ID-->
+        <result column="channel_order_id" property="channelOrderId"/>
+        <!--订单创建时间-->
+        <result column="create_time" property="createTime"/>
+        <!--支付时间-->
+        <result column="pay_time" property="payTime"/>
+        <!--0:待支付 1:支付完成-->
+        <result column="status" property="status"/>
+        <!--购买积分-->
+        <result column="integral" property="integral"/>
+        <!--支付信息-->
+        <result column="pay_info" property="payInfo"/>
+        <!--支付类型-->
+        <result column="pay_type" property="payType"/>
+    </resultMap>
+
+
+    <!-- 通用查询结果列-->
+    <sql id="base_column_list">
+        p.order_id,p.user_id,p.product_id,p.product_name,p.amount,
+        p.channel_order_id,p.create_time,p.pay_time,p.status,p.integral,
+        p.pay_info,p.pay_type
+    </sql>
+
+    <sql id="base_condition_filed">
+        <if test="query.orderId != null and query.orderId!=''">
+            and p.order_id = #{query.orderId}
+        </if>
+        <if test="query.userId != null and query.userId!=''">
+            and p.user_id = #{query.userId}
+        </if>
+        <if test="query.productId != null and query.productId!=''">
+            and p.product_id = #{query.productId}
+        </if>
+        <if test="query.productName != null and query.productName!=''">
+            and p.product_name = #{query.productName}
+        </if>
+        <if test="query.amount != null">
+            and p.amount = #{query.amount}
+        </if>
+        <if test="query.channelOrderId != null and query.channelOrderId!=''">
+            and p.channel_order_id = #{query.channelOrderId}
+        </if>
+        <if test="query.createTime != null and query.createTime!=''">
+            <![CDATA[ and  p.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+        </if>
+        <if test="query.payTime != null and query.payTime!=''">
+            <![CDATA[ and  p.pay_time=str_to_date(#{query.payTime}, '%Y-%m-%d') ]]>
+        </if>
+        <if test="query.status != null">
+            and p.status = #{query.status}
+        </if>
+        <if test="query.integral != null">
+            and p.integral = #{query.integral}
+        </if>
+        <if test="query.payInfo != null and query.payInfo!=''">
+            and p.pay_info = #{query.payInfo}
+        </if>
+        <if test="query.payType != null">
+            and p.pay_type = #{query.payType}
+        </if>
+    </sql>
+
+    <!-- 通用查询条件列-->
+    <sql id="query_condition">
+        <where>
+            <include refid="base_condition_filed"/>
+            <if test="query.orderIdFuzzy!= null  and query.orderIdFuzzy!=''">
+                and p.order_id like concat('%', #{query.orderIdFuzzy}, '%')
+            </if>
+            <if test="query.userIdFuzzy!= null  and query.userIdFuzzy!=''">
+                and p.user_id like concat('%', #{query.userIdFuzzy}, '%')
+            </if>
+            <if test="query.productIdFuzzy!= null  and query.productIdFuzzy!=''">
+                and p.product_id like concat('%', #{query.productIdFuzzy}, '%')
+            </if>
+            <if test="query.productNameFuzzy!= null  and query.productNameFuzzy!=''">
+                and p.product_name like concat('%', #{query.productNameFuzzy}, '%')
+            </if>
+            <if test="query.channelOrderIdFuzzy!= null  and query.channelOrderIdFuzzy!=''">
+                and p.channel_order_id like concat('%', #{query.channelOrderIdFuzzy}, '%')
+            </if>
+            <if test="query.createTimeStart!= null and query.createTimeStart!=''">
+                <![CDATA[ and  p.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+            </if>
+            <if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+                <![CDATA[ and  p.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+            </if>
+            <if test="query.payTimeStart!= null and query.payTimeStart!=''">
+                <![CDATA[ and  p.pay_time>=str_to_date(#{query.payTimeStart}, '%Y-%m-%d') ]]>
+            </if>
+            <if test="query.payTimeEnd!= null and query.payTimeEnd!=''">
+                <![CDATA[ and  p.pay_time< date_sub(str_to_date(#{query.payTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+            </if>
+            <if test="query.payInfoFuzzy!= null  and query.payInfoFuzzy!=''">
+                and p.pay_info like concat('%', #{query.payInfoFuzzy}, '%')
+            </if>
+            <if test="query.nickNameFuzzy!= null  and query.nickNameFuzzy!=''">
+                and u.nick_name like concat('%', #{query.nickNameFuzzy}, '%')
+            </if>
+        </where>
+    </sql>
+
+    <!-- 查询集合-->
+    <select id="selectList" resultMap="base_result_map">
+        SELECT
+        <include refid="base_column_list"/>
+        <if test="query.queryUser">
+            ,u.nick_name
+        </if>
+        FROM pay_order_info p
+        <if test="query.queryUser">
+            left join user_info u on u.user_id = p.user_id
+        </if>
+        <include refid="query_condition"/>
+        <if test="query.orderBy!=null">
+            order by ${query.orderBy}
+        </if>
+        <if test="query.simplePage!=null">
+            limit #{query.simplePage.start},#{query.simplePage.end}
+        </if>
+    </select>
+
+    <!-- 查询数量-->
+    <select id="selectCount" resultType="java.lang.Integer">
+        SELECT count(1) FROM pay_order_info p
+        <include refid="query_condition"/>
+    </select>
+
+    <!-- 插入 （匹配有值的字段）-->
+    <insert id="insert" parameterType="com.easymusic.entity.po.PayOrderInfo">
+        INSERT INTO pay_order_info
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.orderId != null">
+                order_id,
+            </if>
+            <if test="bean.userId != null">
+                user_id,
+            </if>
+            <if test="bean.productId != null">
+                product_id,
+            </if>
+            <if test="bean.productName != null">
+                product_name,
+            </if>
+            <if test="bean.amount != null">
+                amount,
+            </if>
+            <if test="bean.channelOrderId != null">
+                channel_order_id,
+            </if>
+            <if test="bean.createTime != null">
+                create_time,
+            </if>
+            <if test="bean.payTime != null">
+                pay_time,
+            </if>
+            <if test="bean.status != null">
+                status,
+            </if>
+            <if test="bean.integral != null">
+                integral,
+            </if>
+            <if test="bean.payInfo != null">
+                pay_info,
+            </if>
+            <if test="bean.payType != null">
+                pay_type,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.orderId!=null">
+                #{bean.orderId},
+            </if>
+            <if test="bean.userId!=null">
+                #{bean.userId},
+            </if>
+            <if test="bean.productId!=null">
+                #{bean.productId},
+            </if>
+            <if test="bean.productName!=null">
+                #{bean.productName},
+            </if>
+            <if test="bean.amount!=null">
+                #{bean.amount},
+            </if>
+            <if test="bean.channelOrderId!=null">
+                #{bean.channelOrderId},
+            </if>
+            <if test="bean.createTime!=null">
+                #{bean.createTime},
+            </if>
+            <if test="bean.payTime!=null">
+                #{bean.payTime},
+            </if>
+            <if test="bean.status!=null">
+                #{bean.status},
+            </if>
+            <if test="bean.integral!=null">
+                #{bean.integral},
+            </if>
+            <if test="bean.payInfo!=null">
+                #{bean.payInfo},
+            </if>
+            <if test="bean.payType!=null">
+                #{bean.payType},
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 插入或者更新 （匹配有值的字段）-->
+    <insert id="insertOrUpdate" parameterType="com.easymusic.entity.po.PayOrderInfo">
+        INSERT INTO pay_order_info
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.orderId != null">
+                order_id,
+            </if>
+            <if test="bean.userId != null">
+                user_id,
+            </if>
+            <if test="bean.productId != null">
+                product_id,
+            </if>
+            <if test="bean.productName != null">
+                product_name,
+            </if>
+            <if test="bean.amount != null">
+                amount,
+            </if>
+            <if test="bean.channelOrderId != null">
+                channel_order_id,
+            </if>
+            <if test="bean.createTime != null">
+                create_time,
+            </if>
+            <if test="bean.payTime != null">
+                pay_time,
+            </if>
+            <if test="bean.status != null">
+                status,
+            </if>
+            <if test="bean.integral != null">
+                integral,
+            </if>
+            <if test="bean.payInfo != null">
+                pay_info,
+            </if>
+            <if test="bean.payType != null">
+                pay_type,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.orderId!=null">
+                #{bean.orderId},
+            </if>
+            <if test="bean.userId!=null">
+                #{bean.userId},
+            </if>
+            <if test="bean.productId!=null">
+                #{bean.productId},
+            </if>
+            <if test="bean.productName!=null">
+                #{bean.productName},
+            </if>
+            <if test="bean.amount!=null">
+                #{bean.amount},
+            </if>
+            <if test="bean.channelOrderId!=null">
+                #{bean.channelOrderId},
+            </if>
+            <if test="bean.createTime!=null">
+                #{bean.createTime},
+            </if>
+            <if test="bean.payTime!=null">
+                #{bean.payTime},
+            </if>
+            <if test="bean.status!=null">
+                #{bean.status},
+            </if>
+            <if test="bean.integral!=null">
+                #{bean.integral},
+            </if>
+            <if test="bean.payInfo!=null">
+                #{bean.payInfo},
+            </if>
+            <if test="bean.payType!=null">
+                #{bean.payType},
+            </if>
+        </trim>
+        on DUPLICATE key update
+        <trim prefix="" suffix="" suffixOverrides=",">
+            <if test="bean.orderId!=null">
+                order_id = VALUES(order_id),
+            </if>
+            <if test="bean.userId!=null">
+                user_id = VALUES(user_id),
+            </if>
+            <if test="bean.productId!=null">
+                product_id = VALUES(product_id),
+            </if>
+            <if test="bean.productName!=null">
+                product_name = VALUES(product_name),
+            </if>
+            <if test="bean.amount!=null">
+                amount = VALUES(amount),
+            </if>
+            <if test="bean.channelOrderId!=null">
+                channel_order_id = VALUES(channel_order_id),
+            </if>
+            <if test="bean.createTime!=null">
+                create_time = VALUES(create_time),
+            </if>
+            <if test="bean.payTime!=null">
+                pay_time = VALUES(pay_time),
+            </if>
+            <if test="bean.status!=null">
+                status = VALUES(status),
+            </if>
+            <if test="bean.integral!=null">
+                integral = VALUES(integral),
+            </if>
+            <if test="bean.payInfo!=null">
+                pay_info = VALUES(pay_info),
+            </if>
+            <if test="bean.payType!=null">
+                pay_type = VALUES(pay_type),
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 添加 （批量插入）-->
+    <insert id="insertBatch" parameterType="com.easymusic.entity.po.PayOrderInfo">
+        INSERT INTO pay_order_info(
+        order_id,
+        user_id,
+        product_id,
+        product_name,
+        amount,
+        channel_order_id,
+        create_time,
+        pay_time,
+        status,
+        integral,
+        pay_info,
+        pay_type
+        )values
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.orderId},
+            #{item.userId},
+            #{item.productId},
+            #{item.productName},
+            #{item.amount},
+            #{item.channelOrderId},
+            #{item.createTime},
+            #{item.payTime},
+            #{item.status},
+            #{item.integral},
+            #{item.payInfo},
+            #{item.payType}
+            )
+        </foreach>
+    </insert>
+
+    <!-- 批量新增修改 （批量插入）-->
+    <insert id="insertOrUpdateBatch" parameterType="com.easymusic.entity.po.PayOrderInfo">
+        INSERT INTO pay_order_info(
+        order_id,
+        user_id,
+        product_id,
+        product_name,
+        amount,
+        channel_order_id,
+        create_time,
+        pay_time,
+        status,
+        integral,
+        pay_info,
+        pay_type
+        )values
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.orderId},
+            #{item.userId},
+            #{item.productId},
+            #{item.productName},
+            #{item.amount},
+            #{item.channelOrderId},
+            #{item.createTime},
+            #{item.payTime},
+            #{item.status},
+            #{item.integral},
+            #{item.payInfo},
+            #{item.payType}
+            )
+        </foreach>
+        on DUPLICATE key update
+        order_id = VALUES(order_id),
+        user_id = VALUES(user_id),
+        product_id = VALUES(product_id),
+        product_name = VALUES(product_name),
+        amount = VALUES(amount),
+        channel_order_id = VALUES(channel_order_id),
+        create_time = VALUES(create_time),
+        pay_time = VALUES(pay_time),
+        status = VALUES(status),
+        integral = VALUES(integral),
+        pay_info = VALUES(pay_info),
+        pay_type = VALUES(pay_type)
+    </insert>
+
+    <!--多条件修改-->
+    <update id="updateByParam" parameterType="com.easymusic.entity.query.PayOrderInfoQuery">
+        UPDATE pay_order_info p
+        <set>
+            <if test="bean.orderId != null">
+                order_id = #{bean.orderId},
+            </if>
+            <if test="bean.userId != null">
+                user_id = #{bean.userId},
+            </if>
+            <if test="bean.productId != null">
+                product_id = #{bean.productId},
+            </if>
+            <if test="bean.productName != null">
+                product_name = #{bean.productName},
+            </if>
+            <if test="bean.amount != null">
+                amount = #{bean.amount},
+            </if>
+            <if test="bean.channelOrderId != null">
+                channel_order_id = #{bean.channelOrderId},
+            </if>
+            <if test="bean.createTime != null">
+                create_time = #{bean.createTime},
+            </if>
+            <if test="bean.payTime != null">
+                pay_time = #{bean.payTime},
+            </if>
+            <if test="bean.status != null">
+                status = #{bean.status},
+            </if>
+            <if test="bean.integral != null">
+                integral = #{bean.integral},
+            </if>
+            <if test="bean.payInfo != null">
+                pay_info = #{bean.payInfo},
+            </if>
+            <if test="bean.payType != null">
+                pay_type = #{bean.payType},
+            </if>
+        </set>
+        <include refid="query_condition"/>
+    </update>
+
+    <!--多条件删除-->
+    <delete id="deleteByParam">
+        delete p from pay_order_info p
+        <include refid="query_condition"/>
+    </delete>
+
+    <!-- 根据OrderId修改-->
+    <update id="updateByOrderId" parameterType="com.easymusic.entity.po.PayOrderInfo">
+        UPDATE pay_order_info
+        <set>
+            <if test="bean.userId != null">
+                user_id = #{bean.userId},
+            </if>
+            <if test="bean.productId != null">
+                product_id = #{bean.productId},
+            </if>
+            <if test="bean.productName != null">
+                product_name = #{bean.productName},
+            </if>
+            <if test="bean.amount != null">
+                amount = #{bean.amount},
+            </if>
+            <if test="bean.channelOrderId != null">
+                channel_order_id = #{bean.channelOrderId},
+            </if>
+            <if test="bean.createTime != null">
+                create_time = #{bean.createTime},
+            </if>
+            <if test="bean.payTime != null">
+                pay_time = #{bean.payTime},
+            </if>
+            <if test="bean.status != null">
+                status = #{bean.status},
+            </if>
+            <if test="bean.integral != null">
+                integral = #{bean.integral},
+            </if>
+            <if test="bean.payInfo != null">
+                pay_info = #{bean.payInfo},
+            </if>
+            <if test="bean.payType != null">
+                pay_type = #{bean.payType},
+            </if>
+        </set>
+        where order_id=#{orderId}
+    </update>
+
+    <!-- 根据OrderId删除-->
+    <delete id="deleteByOrderId">
+        delete from pay_order_info where order_id=#{orderId}
+    </delete>
+
+    <!-- 根据PrimaryKey获取对象-->
+    <select id="selectByOrderId" resultMap="base_result_map">
+        select
+        <include refid="base_column_list"/>
+        from pay_order_info p where order_id=#{orderId}
+    </select>
+
+</mapper>

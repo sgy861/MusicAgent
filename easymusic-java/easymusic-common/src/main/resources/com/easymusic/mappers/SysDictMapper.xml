@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.easymusic.mappers.SysDictMapper">
+
+    <!--实体映射-->
+    <resultMap id="base_result_map" type="com.easymusic.entity.po.SysDict">
+        <!--字典ID-->
+        <id column="dict_id" property="dictId"/>
+        <!--字典编号-->
+        <result column="dict_code" property="dictCode"/>
+        <!--父级字典ID-->
+        <result column="dict_pcode" property="dictPcode"/>
+        <!--字典值-->
+        <result column="dict_value" property="dictValue"/>
+        <!--字典描述-->
+        <result column="dict_desc" property="dictDesc"/>
+        <!--排序号-->
+        <result column="sort" property="sort"/>
+    </resultMap>
+
+
+    <!-- 通用查询结果列-->
+    <sql id="base_column_list">
+        s.dict_id,s.dict_code,s.dict_pcode,s.dict_value,s.dict_desc,
+        s.sort
+    </sql>
+
+    <sql id="base_condition_filed">
+        <if test="query.dictId != null">
+            and s.dict_id = #{query.dictId}
+        </if>
+        <if test="query.dictCode != null and query.dictCode!=''">
+            and s.dict_code = #{query.dictCode}
+        </if>
+        <if test="query.dictPcode != null and query.dictPcode!=''">
+            and s.dict_pcode = #{query.dictPcode}
+        </if>
+        <if test="query.dictValue != null and query.dictValue!=''">
+            and s.dict_value = #{query.dictValue}
+        </if>
+        <if test="query.dictDesc != null and query.dictDesc!=''">
+            and s.dict_desc = #{query.dictDesc}
+        </if>
+        <if test="query.sort != null">
+            and s.sort = #{query.sort}
+        </if>
+    </sql>
+
+    <!-- 通用查询条件列-->
+    <sql id="query_condition">
+        <where>
+            <include refid="base_condition_filed"/>
+            <if test="query.dictCodeFuzzy!= null  and query.dictCodeFuzzy!=''">
+                and s.dict_code like concat('%', #{query.dictCodeFuzzy}, '%')
+            </if>
+            <if test="query.dictPcodeFuzzy!= null  and query.dictPcodeFuzzy!=''">
+                and s.dict_pcode like concat('%', #{query.dictPcodeFuzzy}, '%')
+            </if>
+            <if test="query.dictValueFuzzy!= null  and query.dictValueFuzzy!=''">
+                and s.dict_value like concat('%', #{query.dictValueFuzzy}, '%')
+            </if>
+            <if test="query.dictDescFuzzy!= null  and query.dictDescFuzzy!=''">
+                and s.dict_desc like concat('%', #{query.dictDescFuzzy}, '%')
+            </if>
+        </where>
+    </sql>
+
+    <!-- 查询集合-->
+    <select id="selectList" resultMap="base_result_map">
+        SELECT
+        <include refid="base_column_list"/>
+        FROM sys_dict s
+        <include refid="query_condition"/>
+        <if test="query.orderBy!=null">
+            order by ${query.orderBy}
+        </if>
+        <if test="query.simplePage!=null">
+            limit #{query.simplePage.start},#{query.simplePage.end}
+        </if>
+    </select>
+
+    <!-- 查询数量-->
+    <select id="selectCount" resultType="java.lang.Integer">
+        SELECT count(1) FROM sys_dict s
+        <include refid="query_condition"/>
+    </select>
+
+    <!-- 插入 （匹配有值的字段）-->
+    <insert id="insert" parameterType="com.easymusic.entity.po.SysDict">
+        <selectKey keyProperty="bean.dictId" resultType="Integer" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+        INSERT INTO sys_dict
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.dictCode != null">
+                dict_code,
+            </if>
+            <if test="bean.dictPcode != null">
+                dict_pcode,
+            </if>
+            <if test="bean.dictValue != null">
+                dict_value,
+            </if>
+            <if test="bean.dictDesc != null">
+                dict_desc,
+            </if>
+            <if test="bean.sort != null">
+                sort,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.dictCode!=null">
+                #{bean.dictCode},
+            </if>
+            <if test="bean.dictPcode!=null">
+                #{bean.dictPcode},
+            </if>
+            <if test="bean.dictValue!=null">
+                #{bean.dictValue},
+            </if>
+            <if test="bean.dictDesc!=null">
+                #{bean.dictDesc},
+            </if>
+            <if test="bean.sort!=null">
+                #{bean.sort},
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 插入或者更新 （匹配有值的字段）-->
+    <insert id="insertOrUpdate" parameterType="com.easymusic.entity.po.SysDict">
+        INSERT INTO sys_dict
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.dictId != null">
+                dict_id,
+            </if>
+            <if test="bean.dictCode != null">
+                dict_code,
+            </if>
+            <if test="bean.dictPcode != null">
+                dict_pcode,
+            </if>
+            <if test="bean.dictValue != null">
+                dict_value,
+            </if>
+            <if test="bean.dictDesc != null">
+                dict_desc,
+            </if>
+            <if test="bean.sort != null">
+                sort,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.dictId!=null">
+                #{bean.dictId},
+            </if>
+            <if test="bean.dictCode!=null">
+                #{bean.dictCode},
+            </if>
+            <if test="bean.dictPcode!=null">
+                #{bean.dictPcode},
+            </if>
+            <if test="bean.dictValue!=null">
+                #{bean.dictValue},
+            </if>
+            <if test="bean.dictDesc!=null">
+                #{bean.dictDesc},
+            </if>
+            <if test="bean.sort!=null">
+                #{bean.sort},
+            </if>
+        </trim>
+        on DUPLICATE key update
+        <trim prefix="" suffix="" suffixOverrides=",">
+            <if test="bean.dictCode!=null">
+                dict_code = VALUES(dict_code),
+            </if>
+            <if test="bean.dictPcode!=null">
+                dict_pcode = VALUES(dict_pcode),
+            </if>
+            <if test="bean.dictValue!=null">
+                dict_value = VALUES(dict_value),
+            </if>
+            <if test="bean.dictDesc!=null">
+                dict_desc = VALUES(dict_desc),
+            </if>
+            <if test="bean.sort!=null">
+                sort = VALUES(sort),
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 添加 （批量插入）-->
+    <insert id="insertBatch" parameterType="com.easymusic.entity.po.SysDict" useGeneratedKeys="true" keyProperty="dictId">
+        INSERT INTO sys_dict(
+        dict_code,
+        dict_pcode,
+        dict_value,
+        dict_desc,
+        sort
+        )values
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.dictCode},
+            #{item.dictPcode},
+            #{item.dictValue},
+            #{item.dictDesc},
+            #{item.sort}
+            )
+        </foreach>
+    </insert>
+
+    <!-- 批量新增修改 （批量插入）-->
+    <insert id="insertOrUpdateBatch" parameterType="com.easymusic.entity.po.SysDict">
+        INSERT INTO sys_dict(
+        dict_code,
+        dict_pcode,
+        dict_value,
+        dict_desc,
+        sort
+        )values
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.dictCode},
+            #{item.dictPcode},
+            #{item.dictValue},
+            #{item.dictDesc},
+            #{item.sort}
+            )
+        </foreach>
+        on DUPLICATE key update
+        dict_code = VALUES(dict_code),
+        dict_pcode = VALUES(dict_pcode),
+        dict_value = VALUES(dict_value),
+        dict_desc = VALUES(dict_desc),
+        sort = VALUES(sort)
+    </insert>
+
+    <!--多条件修改-->
+    <update id="updateByParam" parameterType="com.easymusic.entity.query.SysDictQuery">
+        UPDATE sys_dict s
+        <set>
+            <if test="bean.dictCode != null">
+                dict_code = #{bean.dictCode},
+            </if>
+            <if test="bean.dictPcode != null">
+                dict_pcode = #{bean.dictPcode},
+            </if>
+            <if test="bean.dictValue != null">
+                dict_value = #{bean.dictValue},
+            </if>
+            <if test="bean.dictDesc != null">
+                dict_desc = #{bean.dictDesc},
+            </if>
+            <if test="bean.sort != null">
+                sort = #{bean.sort},
+            </if>
+        </set>
+        <include refid="query_condition"/>
+    </update>
+
+    <!--多条件删除-->
+    <delete id="deleteByParam">
+        delete s from sys_dict s
+        <include refid="query_condition"/>
+    </delete>
+
+    <!-- 根据DictId修改-->
+    <update id="updateByDictId" parameterType="com.easymusic.entity.po.SysDict">
+        UPDATE sys_dict
+        <set>
+            <if test="bean.dictCode != null">
+                dict_code = #{bean.dictCode},
+            </if>
+            <if test="bean.dictPcode != null">
+                dict_pcode = #{bean.dictPcode},
+            </if>
+            <if test="bean.dictValue != null">
+                dict_value = #{bean.dictValue},
+            </if>
+            <if test="bean.dictDesc != null">
+                dict_desc = #{bean.dictDesc},
+            </if>
+            <if test="bean.sort != null">
+                sort = #{bean.sort},
+            </if>
+        </set>
+        where dict_id=#{dictId}
+    </update>
+
+    <!-- 根据DictId删除-->
+    <delete id="deleteByDictId">
+        delete from sys_dict where dict_id=#{dictId}
+    </delete>
+
+    <!-- 根据PrimaryKey获取对象-->
+    <select id="selectByDictId" resultMap="base_result_map">
+        select
+        <include refid="base_column_list"/>
+        from sys_dict s where dict_id=#{dictId}
+    </select>
+
+    <update id="changeSort">
+        <foreach collection="sysDictList" separator=";" item="item">
+            update sys_dict set sort=#{item.sort} where dict_id=#{item.dictId}
+        </foreach>
+    </update>
+</mapper>

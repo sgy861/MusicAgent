@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.easymusic.mappers.UserPreferenceProfileMapper">
+
+    <resultMap id="base_result_map" type="com.easymusic.entity.po.UserPreferenceProfile">
+        <result column="user_id" property="userId"/>
+        <result column="preference_text" property="preferenceText"/>
+        <result column="preference_vector" property="preferenceVector" jdbcType="BLOB"/>
+        <result column="last_action_id" property="lastActionId"/>
+        <result column="last_behavior_time" property="lastBehaviorTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="base_column_list">
+        user_id, preference_text, preference_vector, last_action_id, last_behavior_time, update_time
+    </sql>
+
+    <!-- 插入 -->
+    <insert id="insert" parameterType="com.easymusic.entity.po.UserPreferenceProfile">
+        INSERT INTO user_preference_profile (
+            user_id, preference_text, preference_vector, last_action_id, last_behavior_time, update_time
+        ) VALUES (
+            #{bean.userId}, #{bean.preferenceText}, #{bean.preferenceVector, jdbcType=BLOB}, #{bean.lastActionId}, #{bean.lastBehaviorTime}, #{bean.updateTime}
+        )
+    </insert>
+
+    <!-- 插入或者更新 (UPSERT) -->
+    <insert id="insertOrUpdate" parameterType="com.easymusic.entity.po.UserPreferenceProfile">
+        INSERT INTO user_preference_profile (
+            user_id, preference_text, preference_vector, last_action_id, last_behavior_time, update_time
+        ) VALUES (
+            #{bean.userId}, #{bean.preferenceText}, #{bean.preferenceVector, jdbcType=BLOB}, #{bean.lastActionId}, #{bean.lastBehaviorTime}, #{bean.updateTime}
+        )
+        ON DUPLICATE KEY UPDATE
+            preference_text = #{bean.preferenceText},
+            preference_vector = #{bean.preferenceVector, jdbcType=BLOB},
+            last_action_id = #{bean.lastActionId},
+            last_behavior_time = #{bean.lastBehaviorTime},
+            update_time = #{bean.updateTime}
+    </insert>
+
+    <!-- 根据UserId修改 -->
+    <update id="updateByUserId" parameterType="com.easymusic.entity.po.UserPreferenceProfile">
+        UPDATE user_preference_profile
+        <set>
+            <if test="bean.preferenceText != null">
+                preference_text = #{bean.preferenceText},
+            </if>
+            <if test="bean.preferenceVector != null">
+                preference_vector = #{bean.preferenceVector, jdbcType=BLOB},
+            </if>
+            <if test="bean.lastActionId != null">
+                last_action_id = #{bean.lastActionId},
+            </if>
+            <if test="bean.lastBehaviorTime != null">
+                last_behavior_time = #{bean.lastBehaviorTime},
+            </if>
+            <if test="bean.updateTime != null">
+                update_time = #{bean.updateTime},
+            </if>
+        </set>
+        WHERE user_id = #{userId}
+    </update>
+
+    <!-- 根据UserId删除 -->
+    <delete id="deleteByUserId">
+        DELETE FROM user_preference_profile WHERE user_id = #{userId}
+    </delete>
+
+    <!-- 根据UserId获取对象 -->
+    <select id="selectByUserId" resultMap="base_result_map">
+        SELECT <include refid="base_column_list"/> FROM user_preference_profile WHERE user_id = #{userId}
+    </select>
+
+</mapper>

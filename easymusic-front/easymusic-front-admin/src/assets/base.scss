@@ -1,0 +1,124 @@
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+    /**/
+}
+
+::-webkit-scrollbar-track {
+    background: rgb(239, 239, 239);
+    border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #bfbfbf;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #bfbfbf;
+}
+
+::-webkit-scrollbar-corner {
+    background: #bfbfbf;
+}
+
+
+:root {
+    --text: #494949;
+    --text2: #8b8b8b;
+    --blue: #0471FF;
+}
+
+//去除下拉菜单 黑边
+.el-tooltip__trigger:focus-visible {
+    outline: unset;
+}
+
+* {
+    box-sizing: border-box;
+    padding: 0px;
+    margin: 0px;
+}
+
+.a-link {
+    cursor: pointer;
+    text-decoration: none;
+    color: #0471FF;
+}
+
+//重写tab
+.my-tab {
+    .el-tabs__nav-wrap {
+        &::after {
+            background: none;
+        }
+    }
+
+    .el-tabs__header {
+        margin: 0px;
+    }
+}
+
+//重写 收起展开
+.my-collapse {
+    .el-collapse-item__content {
+        padding-bottom: 0px;
+    }
+
+    .el-collapse-item__wrap,
+    .el-collapse,
+    .el-collapse-item__header {
+        border-bottom: none;
+    }
+}
+
+.el-message-box {
+    -webkit-app-region: no-drag;
+}
+
+.top-panel {
+    .el-form-item {
+        margin-bottom: 0px;
+    }
+
+    .second-row {
+        margin-top: 5px;
+    }
+}
+
+
+
+.volume-popover {
+    min-width: 0px !important;
+    padding: 20px 0px !important;
+    background: #3e344f !important;
+    border: none !important;
+
+    .el-slider.is-vertical .el-slider__runway {
+        width: 2px;
+    }
+
+    .el-slider.is-vertical .el-slider__bar {
+        width: 2px;
+    }
+
+    .el-slider.is-vertical .el-slider__button-wrapper {
+        left: -17px;
+    }
+
+    .el-slider__button {
+        background: #95AEFC;
+        border: none;
+        height: 10px;
+        width: 10px;
+    }
+
+    .el-slider__bar {
+        background: #95AEFC;
+    }
+}
+
+.el-popper {
+    padding: 0px 5px;
+    line-height: normal;
+}

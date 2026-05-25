@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.easymusic.mappers.MusicInfoActionMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.easymusic.entity.po.MusicInfoAction">
+		<!--操作ID-->
+		<result column="action_id" property="actionId"  />
+		<!--音乐ID-->
+		<result column="music_id" property="musicId"  />
+		<!--音乐用户ID-->
+		<result column="music_user_id" property="musicUserId"  />
+		<!--用户ID-->
+		<result column="user_id" property="userId"  />
+		<!--操作类型1:点赞-->
+		<result column="action_type" property="actionType"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 m.action_id,m.music_id,m.music_user_id,m.user_id,m.action_type
+		 
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.actionId != null">
+				 and  m.action_id = #{query.actionId}
+			</if>
+			<if test="query.musicId != null and query.musicId!=''">
+				 and  m.music_id = #{query.musicId}
+			</if>
+			<if test="query.musicUserId != null and query.musicUserId!=''">
+				 and  m.music_user_id = #{query.musicUserId}
+			</if>
+			<if test="query.userId != null and query.userId!=''">
+				 and  m.user_id = #{query.userId}
+			</if>
+			<if test="query.actionType != null">
+				 and  m.action_type = #{query.actionType}
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.musicIdFuzzy!= null  and query.musicIdFuzzy!=''">
+				 and  m.music_id like concat('%', #{query.musicIdFuzzy}, '%')
+			</if>
+			<if test="query.musicUserIdFuzzy!= null  and query.musicUserIdFuzzy!=''">
+				 and  m.music_user_id like concat('%', #{query.musicUserIdFuzzy}, '%')
+			</if>
+			<if test="query.userIdFuzzy!= null  and query.userIdFuzzy!=''">
+				 and  m.user_id like concat('%', #{query.userIdFuzzy}, '%')
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM music_info_action m <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM music_info_action m <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.easymusic.entity.po.MusicInfoAction">
+		 INSERT INTO music_info_action
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.actionId != null">
+				 action_id,
+			</if>
+			<if test="bean.musicId != null">
+				 music_id,
+			</if>
+			<if test="bean.musicUserId != null">
+				 music_user_id,
+			</if>
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.actionType != null">
+				 action_type,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.actionId!=null">
+				 #{bean.actionId},
+			</if>
+			<if test="bean.musicId!=null">
+				 #{bean.musicId},
+			</if>
+			<if test="bean.musicUserId!=null">
+				 #{bean.musicUserId},
+			</if>
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.actionType!=null">
+				 #{bean.actionType},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.easymusic.entity.po.MusicInfoAction">
+		 INSERT INTO music_info_action
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.actionId != null">
+				 action_id,
+			</if>
+			<if test="bean.musicId != null">
+				 music_id,
+			</if>
+			<if test="bean.musicUserId != null">
+				 music_user_id,
+			</if>
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.actionType != null">
+				 action_type,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.actionId!=null">
+				 #{bean.actionId},
+			</if>
+			<if test="bean.musicId!=null">
+				 #{bean.musicId},
+			</if>
+			<if test="bean.musicUserId!=null">
+				 #{bean.musicUserId},
+			</if>
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.actionType!=null">
+				 #{bean.actionType},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.actionId!=null">
+				 action_id = VALUES(action_id),
+			</if>
+			<if test="bean.musicId!=null">
+				 music_id = VALUES(music_id),
+			</if>
+			<if test="bean.musicUserId!=null">
+				 music_user_id = VALUES(music_user_id),
+			</if>
+			<if test="bean.userId!=null">
+				 user_id = VALUES(user_id),
+			</if>
+			<if test="bean.actionType!=null">
+				 action_type = VALUES(action_type),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.easymusic.entity.po.MusicInfoAction">
+		 INSERT INTO music_info_action(
+			 action_id,
+			 music_id,
+			 music_user_id,
+			 user_id,
+			 action_type
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.actionId},
+				 #{item.musicId},
+				 #{item.musicUserId},
+				 #{item.userId},
+				 #{item.actionType}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.easymusic.entity.po.MusicInfoAction">
+		 INSERT INTO music_info_action(
+			 action_id,
+			 music_id,
+			 music_user_id,
+			 user_id,
+			 action_type
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.actionId},
+				 #{item.musicId},
+				 #{item.musicUserId},
+				 #{item.userId},
+				 #{item.actionType}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			action_id = VALUES(action_id),
+			music_id = VALUES(music_id),
+			music_user_id = VALUES(music_user_id),
+			user_id = VALUES(user_id),
+			action_type = VALUES(action_type)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.easymusic.entity.query.MusicInfoActionQuery">
+		 UPDATE music_info_action m
+ 		 <set> 
+			<if test="bean.actionId != null">
+				 action_id = #{bean.actionId},
+			</if>
+			<if test="bean.musicId != null">
+				 music_id = #{bean.musicId},
+			</if>
+			<if test="bean.musicUserId != null">
+				 music_user_id = #{bean.musicUserId},
+			</if>
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+			<if test="bean.actionType != null">
+				 action_type = #{bean.actionType},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete m from music_info_action m
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据ActionId修改-->
+	<update id="updateByActionId" parameterType="com.easymusic.entity.po.MusicInfoAction">
+		 UPDATE music_info_action
+ 		 <set> 
+			<if test="bean.musicId != null">
+				 music_id = #{bean.musicId},
+			</if>
+			<if test="bean.musicUserId != null">
+				 music_user_id = #{bean.musicUserId},
+			</if>
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+			<if test="bean.actionType != null">
+				 action_type = #{bean.actionType},
+			</if>
+ 		 </set>
+ 		 where action_id=#{actionId}
+	</update>
+
+	<!-- 根据ActionId删除-->
+	<delete id="deleteByActionId">
+		delete from music_info_action where action_id=#{actionId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByActionId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from music_info_action m where action_id=#{actionId}
+	</select>
+
+	<!-- 根据MusicIdAndUserId修改-->
+	<update id="updateByMusicIdAndUserId" parameterType="com.easymusic.entity.po.MusicInfoAction">
+		 UPDATE music_info_action
+ 		 <set> 
+			<if test="bean.actionId != null">
+				 action_id = #{bean.actionId},
+			</if>
+			<if test="bean.musicUserId != null">
+				 music_user_id = #{bean.musicUserId},
+			</if>
+			<if test="bean.actionType != null">
+				 action_type = #{bean.actionType},
+			</if>
+ 		 </set>
+ 		 where music_id=#{musicId} and user_id=#{userId}
+	</update>
+
+	<!-- 根据MusicIdAndUserId删除-->
+	<delete id="deleteByMusicIdAndUserId">
+		delete from music_info_action where music_id=#{musicId} and user_id=#{userId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByMusicIdAndUserId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from music_info_action m where music_id=#{musicId} and user_id=#{userId}
+	</select>
+
+</mapper>

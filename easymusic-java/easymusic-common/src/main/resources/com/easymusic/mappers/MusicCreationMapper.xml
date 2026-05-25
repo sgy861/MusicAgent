@@ -1,0 +1,417 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.easymusic.mappers.MusicCreationMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.easymusic.entity.po.MusicCreation">
+		<!--创作ID-->
+		<result column="creation_id" property="creationId"  />
+		<!--用户ID-->
+		<result column="user_id" property="userId"  />
+		<!--提示词-->
+		<result column="prompt" property="prompt"  />
+		<!--歌词-->
+		<result column="lyrics" property="lyrics"  />
+		<!--模型-->
+		<result column="model" property="model"  />
+		<!--音乐类型 0:音乐 1:纯音乐-->
+		<result column="music_type" property="musicType"  />
+		<!--模式 0:简单模式 1:专家模式-->
+		<result column="mode_type" property="modeType"  />
+		<!--设置信息-->
+		<result column="settings" property="settings"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 m.creation_id,m.user_id,m.prompt,m.lyrics,m.model,
+		 m.music_type,m.mode_type,m.settings,m.create_time
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.creationId != null and query.creationId!=''">
+				 and  m.creation_id = #{query.creationId}
+			</if>
+			<if test="query.userId != null and query.userId!=''">
+				 and  m.user_id = #{query.userId}
+			</if>
+			<if test="query.prompt != null and query.prompt!=''">
+				 and  m.prompt = #{query.prompt}
+			</if>
+			<if test="query.lyrics != null and query.lyrics!=''">
+				 and  m.lyrics = #{query.lyrics}
+			</if>
+			<if test="query.model != null and query.model!=''">
+				 and  m.model = #{query.model}
+			</if>
+			<if test="query.musicType != null">
+				 and  m.music_type = #{query.musicType}
+			</if>
+			<if test="query.modeType != null">
+				 and  m.mode_type = #{query.modeType}
+			</if>
+			<if test="query.settings != null and query.settings!=''">
+				 and  m.settings = #{query.settings}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  m.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.creationIdFuzzy!= null  and query.creationIdFuzzy!=''">
+				 and  m.creation_id like concat('%', #{query.creationIdFuzzy}, '%')
+			</if>
+			<if test="query.userIdFuzzy!= null  and query.userIdFuzzy!=''">
+				 and  m.user_id like concat('%', #{query.userIdFuzzy}, '%')
+			</if>
+			<if test="query.promptFuzzy!= null  and query.promptFuzzy!=''">
+				 and  m.prompt like concat('%', #{query.promptFuzzy}, '%')
+			</if>
+			<if test="query.lyricsFuzzy!= null  and query.lyricsFuzzy!=''">
+				 and  m.lyrics like concat('%', #{query.lyricsFuzzy}, '%')
+			</if>
+			<if test="query.modelFuzzy!= null  and query.modelFuzzy!=''">
+				 and  m.model like concat('%', #{query.modelFuzzy}, '%')
+			</if>
+			<if test="query.settingsFuzzy!= null  and query.settingsFuzzy!=''">
+				 and  m.settings like concat('%', #{query.settingsFuzzy}, '%')
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  m.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  m.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM music_creation m <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM music_creation m <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.easymusic.entity.po.MusicCreation">
+		 INSERT INTO music_creation
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.creationId != null">
+				 creation_id,
+			</if>
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.prompt != null">
+				 prompt,
+			</if>
+			<if test="bean.lyrics != null">
+				 lyrics,
+			</if>
+			<if test="bean.model != null">
+				 model,
+			</if>
+			<if test="bean.musicType != null">
+				 music_type,
+			</if>
+			<if test="bean.modeType != null">
+				 mode_type,
+			</if>
+			<if test="bean.settings != null">
+				 settings,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.creationId!=null">
+				 #{bean.creationId},
+			</if>
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.prompt!=null">
+				 #{bean.prompt},
+			</if>
+			<if test="bean.lyrics!=null">
+				 #{bean.lyrics},
+			</if>
+			<if test="bean.model!=null">
+				 #{bean.model},
+			</if>
+			<if test="bean.musicType!=null">
+				 #{bean.musicType},
+			</if>
+			<if test="bean.modeType!=null">
+				 #{bean.modeType},
+			</if>
+			<if test="bean.settings!=null">
+				 #{bean.settings},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.easymusic.entity.po.MusicCreation">
+		 INSERT INTO music_creation
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.creationId != null">
+				 creation_id,
+			</if>
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.prompt != null">
+				 prompt,
+			</if>
+			<if test="bean.lyrics != null">
+				 lyrics,
+			</if>
+			<if test="bean.model != null">
+				 model,
+			</if>
+			<if test="bean.musicType != null">
+				 music_type,
+			</if>
+			<if test="bean.modeType != null">
+				 mode_type,
+			</if>
+			<if test="bean.settings != null">
+				 settings,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.creationId!=null">
+				 #{bean.creationId},
+			</if>
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.prompt!=null">
+				 #{bean.prompt},
+			</if>
+			<if test="bean.lyrics!=null">
+				 #{bean.lyrics},
+			</if>
+			<if test="bean.model!=null">
+				 #{bean.model},
+			</if>
+			<if test="bean.musicType!=null">
+				 #{bean.musicType},
+			</if>
+			<if test="bean.modeType!=null">
+				 #{bean.modeType},
+			</if>
+			<if test="bean.settings!=null">
+				 #{bean.settings},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.creationId!=null">
+				 creation_id = VALUES(creation_id),
+			</if>
+			<if test="bean.userId!=null">
+				 user_id = VALUES(user_id),
+			</if>
+			<if test="bean.prompt!=null">
+				 prompt = VALUES(prompt),
+			</if>
+			<if test="bean.lyrics!=null">
+				 lyrics = VALUES(lyrics),
+			</if>
+			<if test="bean.model!=null">
+				 model = VALUES(model),
+			</if>
+			<if test="bean.musicType!=null">
+				 music_type = VALUES(music_type),
+			</if>
+			<if test="bean.modeType!=null">
+				 mode_type = VALUES(mode_type),
+			</if>
+			<if test="bean.settings!=null">
+				 settings = VALUES(settings),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.easymusic.entity.po.MusicCreation">
+		 INSERT INTO music_creation(
+			 creation_id,
+			 user_id,
+			 prompt,
+			 lyrics,
+			 model,
+			 music_type,
+			 mode_type,
+			 settings,
+			 create_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.creationId},
+				 #{item.userId},
+				 #{item.prompt},
+				 #{item.lyrics},
+				 #{item.model},
+				 #{item.musicType},
+				 #{item.modeType},
+				 #{item.settings},
+				 #{item.createTime}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.easymusic.entity.po.MusicCreation">
+		 INSERT INTO music_creation(
+			 creation_id,
+			 user_id,
+			 prompt,
+			 lyrics,
+			 model,
+			 music_type,
+			 mode_type,
+			 settings,
+			 create_time
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.creationId},
+				 #{item.userId},
+				 #{item.prompt},
+				 #{item.lyrics},
+				 #{item.model},
+				 #{item.musicType},
+				 #{item.modeType},
+				 #{item.settings},
+				 #{item.createTime}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			creation_id = VALUES(creation_id),
+			user_id = VALUES(user_id),
+			prompt = VALUES(prompt),
+			lyrics = VALUES(lyrics),
+			model = VALUES(model),
+			music_type = VALUES(music_type),
+			mode_type = VALUES(mode_type),
+			settings = VALUES(settings),
+			create_time = VALUES(create_time)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.easymusic.entity.query.MusicCreationQuery">
+		 UPDATE music_creation m
+ 		 <set> 
+			<if test="bean.creationId != null">
+				 creation_id = #{bean.creationId},
+			</if>
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+			<if test="bean.prompt != null">
+				 prompt = #{bean.prompt},
+			</if>
+			<if test="bean.lyrics != null">
+				 lyrics = #{bean.lyrics},
+			</if>
+			<if test="bean.model != null">
+				 model = #{bean.model},
+			</if>
+			<if test="bean.musicType != null">
+				 music_type = #{bean.musicType},
+			</if>
+			<if test="bean.modeType != null">
+				 mode_type = #{bean.modeType},
+			</if>
+			<if test="bean.settings != null">
+				 settings = #{bean.settings},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete m from music_creation m
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据CreationId修改-->
+	<update id="updateByCreationId" parameterType="com.easymusic.entity.po.MusicCreation">
+		 UPDATE music_creation
+ 		 <set> 
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+			<if test="bean.prompt != null">
+				 prompt = #{bean.prompt},
+			</if>
+			<if test="bean.lyrics != null">
+				 lyrics = #{bean.lyrics},
+			</if>
+			<if test="bean.model != null">
+				 model = #{bean.model},
+			</if>
+			<if test="bean.musicType != null">
+				 music_type = #{bean.musicType},
+			</if>
+			<if test="bean.modeType != null">
+				 mode_type = #{bean.modeType},
+			</if>
+			<if test="bean.settings != null">
+				 settings = #{bean.settings},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+ 		 </set>
+ 		 where creation_id=#{creationId}
+	</update>
+
+	<!-- 根据CreationId删除-->
+	<delete id="deleteByCreationId">
+		delete from music_creation where creation_id=#{creationId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByCreationId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from music_creation m where creation_id=#{creationId}
+	</select>
+
+</mapper>

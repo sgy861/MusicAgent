@@ -1,0 +1,56 @@
+# ==========================================
+# Java & Maven Build Folders
+# ==========================================
+**/target/
+**/*.class
+**/*.jar
+**/*.war
+**/*.ear
+.mvn/
+*.versionsBackup
+
+# ==========================================
+# Node.js & Frontend Build Folders
+# ==========================================
+**/node_modules/
+**/dist/
+**/.eslintcache
+package-lock.json.backup
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ==========================================
+# IDEs & Editors Configuration
+# ==========================================
+.idea/
+*.iml
+*.ipr
+*.iws
+.settings/
+.project
+.classpath
+.factorypath
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ==========================================
+# OS & System Files
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+
+# ==========================================
+# Local environment overrides
+# ==========================================
+.env.local
+.env.*.local
+docker-compose.override.yml

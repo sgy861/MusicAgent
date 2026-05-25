@@ -1,0 +1,158 @@
+@forward 'element-plus/theme-chalk/src/common/var.scss' with ($colors: ('primary': ('base': #5540A0,
+        ),
+    ));
+@use "element-plus/theme-chalk/src/index.scss" as *;
+
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0E0123;
+    border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #94adff;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94adff;
+}
+
+:root {
+    --text: #ffffff80;
+    --HiText: #fff;
+    --activeText: #94adff;
+    --purple: #AD44F4;
+    --btnBg: linear-gradient(135deg, #00dbde, #fc00ff);
+    --btnShadow: 0 5px 15px rgba(252, 0, 255, 0.4);
+}
+
+//去除下拉菜单 黑边
+.el-tooltip__trigger:focus-visible {
+    outline: unset;
+}
+
+body {
+    background: #0e0123;
+}
+
+* {
+    box-sizing: border-box;
+    padding: 0px;
+    margin: 0px;
+}
+
+.a-link {
+    cursor: pointer;
+    text-decoration: none;
+    color: #0471FF;
+}
+
+//重写tab
+.my-tab {
+    .el-tabs__nav-wrap {
+        &::after {
+            background: none;
+        }
+    }
+
+    .el-tabs__header {
+        margin: 0px;
+    }
+}
+
+//重写 收起展开
+.my-collapse {
+    .el-collapse-item__content {
+        padding-bottom: 0px;
+    }
+
+    .el-collapse-item__wrap,
+    .el-collapse,
+    .el-collapse-item__header {
+        border-bottom: none;
+    }
+}
+
+.el-message-box {
+    -webkit-app-region: no-drag;
+}
+
+.top-panel {
+    .el-form-item {
+        margin-bottom: 0px;
+    }
+
+    .second-row {
+        margin-top: 5px;
+    }
+}
+
+.volume-popover {
+    min-width: 0px !important;
+    padding: 20px 0px !important;
+    background: #3e344f !important;
+    border: none !important;
+
+    .el-slider.is-vertical .el-slider__runway {
+        width: 2px;
+    }
+
+    .el-slider.is-vertical .el-slider__bar {
+        width: 2px;
+    }
+
+    .el-slider.is-vertical .el-slider__button-wrapper {
+        left: -17px;
+    }
+
+    .el-slider__button {
+        background: #95AEFC;
+        border: none;
+        height: 10px;
+        width: 10px;
+    }
+
+    .el-slider__bar {
+        background: #95AEFC;
+    }
+}
+
+.el-popper {
+    padding: 0px 5px;
+    line-height: normal;
+}
+
+.left-side-header {
+    background: #0E0E0E;
+    margin-bottom: 0px;
+}
+
+
+.left-side-body {
+    background: #0E0E0E;
+    padding: 0px;
+}
+
+//用户信息弹出框
+.user-info-popper {
+    padding: 0px !important;
+    border: none !important;
+    background: #3E3450 !important;
+    border-radius: 5px;
+    overflow: hidden;
+
+    .menu-item {
+        padding: 10px;
+        color: #fff;
+        cursor: pointer;
+
+        &:hover {
+            background: #524962;
+        }
+    }
+}

@@ -1,0 +1,422 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.easymusic.mappers.ProductInfoMapper">
+
+    <!--实体映射-->
+    <resultMap id="base_result_map" type="com.easymusic.entity.po.ProductInfo">
+        <!--商品ID-->
+        <result column="product_id" property="productId"/>
+        <!--商品名称-->
+        <result column="product_name" property="productName"/>
+        <!--封面-->
+        <result column="cover" property="cover"/>
+        <!--价格-->
+        <result column="price" property="price"/>
+        <!--商品描述-->
+        <result column="product_description" property="productDescription"/>
+        <!--创建时间-->
+        <result column="create_time" property="createTime"/>
+        <!--上架类型-->
+        <result column="onsale_type" property="onsaleType"/>
+        <!--购买积分-->
+        <result column="integral" property="integral"/>
+        <!--排序号-->
+        <result column="sort" property="sort"/>
+    </resultMap>
+
+
+    <!-- 通用查询结果列-->
+    <sql id="base_column_list">
+        p.product_id,p.product_name,p.cover,p.price,p.product_description,
+        p.create_time,p.onsale_type,p.integral,p.sort
+    </sql>
+
+    <sql id="base_condition_filed">
+        <if test="query.productId != null and query.productId!=''">
+            and p.product_id = #{query.productId}
+        </if>
+        <if test="query.productName != null and query.productName!=''">
+            and p.product_name = #{query.productName}
+        </if>
+        <if test="query.cover != null and query.cover!=''">
+            and p.cover = #{query.cover}
+        </if>
+        <if test="query.price != null">
+            and p.price = #{query.price}
+        </if>
+        <if test="query.productDescription != null and query.productDescription!=''">
+            and p.product_description = #{query.productDescription}
+        </if>
+        <if test="query.createTime != null and query.createTime!=''">
+            <![CDATA[ and  p.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+        </if>
+        <if test="query.onsaleType != null">
+            and p.onsale_type = #{query.onsaleType}
+        </if>
+        <if test="query.integral != null">
+            and p.integral = #{query.integral}
+        </if>
+        <if test="query.sort != null">
+            and p.sort = #{query.sort}
+        </if>
+    </sql>
+
+    <!-- 通用查询条件列-->
+    <sql id="query_condition">
+        <where>
+            <include refid="base_condition_filed"/>
+            <if test="query.productIdFuzzy!= null  and query.productIdFuzzy!=''">
+                and p.product_id like concat('%', #{query.productIdFuzzy}, '%')
+            </if>
+            <if test="query.productNameFuzzy!= null  and query.productNameFuzzy!=''">
+                and p.product_name like concat('%', #{query.productNameFuzzy}, '%')
+            </if>
+            <if test="query.coverFuzzy!= null  and query.coverFuzzy!=''">
+                and p.cover like concat('%', #{query.coverFuzzy}, '%')
+            </if>
+            <if test="query.productDescriptionFuzzy!= null  and query.productDescriptionFuzzy!=''">
+                and p.product_description like concat('%', #{query.productDescriptionFuzzy}, '%')
+            </if>
+            <if test="query.createTimeStart!= null and query.createTimeStart!=''">
+                <![CDATA[ and  p.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+            </if>
+            <if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+                <![CDATA[ and  p.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+            </if>
+        </where>
+    </sql>
+
+    <!-- 查询集合-->
+    <select id="selectList" resultMap="base_result_map">
+        SELECT
+        <include refid="base_column_list"/>
+        FROM product_info p
+        <include refid="query_condition"/>
+        <if test="query.orderBy!=null">
+            order by ${query.orderBy}
+        </if>
+        <if test="query.simplePage!=null">
+            limit #{query.simplePage.start},#{query.simplePage.end}
+        </if>
+    </select>
+
+    <!-- 查询数量-->
+    <select id="selectCount" resultType="java.lang.Integer">
+        SELECT count(1) FROM product_info p
+        <include refid="query_condition"/>
+    </select>
+
+    <!-- 插入 （匹配有值的字段）-->
+    <insert id="insert" parameterType="com.easymusic.entity.po.ProductInfo">
+        INSERT INTO product_info
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.productId != null">
+                product_id,
+            </if>
+            <if test="bean.productName != null">
+                product_name,
+            </if>
+            <if test="bean.cover != null">
+                cover,
+            </if>
+            <if test="bean.price != null">
+                price,
+            </if>
+            <if test="bean.productDescription != null">
+                product_description,
+            </if>
+            <if test="bean.createTime != null">
+                create_time,
+            </if>
+            <if test="bean.onsaleType != null">
+                onsale_type,
+            </if>
+            <if test="bean.integral != null">
+                integral,
+            </if>
+            <if test="bean.sort != null">
+                sort,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.productId!=null">
+                #{bean.productId},
+            </if>
+            <if test="bean.productName!=null">
+                #{bean.productName},
+            </if>
+            <if test="bean.cover!=null">
+                #{bean.cover},
+            </if>
+            <if test="bean.price!=null">
+                #{bean.price},
+            </if>
+            <if test="bean.productDescription!=null">
+                #{bean.productDescription},
+            </if>
+            <if test="bean.createTime!=null">
+                #{bean.createTime},
+            </if>
+            <if test="bean.onsaleType!=null">
+                #{bean.onsaleType},
+            </if>
+            <if test="bean.integral!=null">
+                #{bean.integral},
+            </if>
+            <if test="bean.sort!=null">
+                #{bean.sort},
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 插入或者更新 （匹配有值的字段）-->
+    <insert id="insertOrUpdate" parameterType="com.easymusic.entity.po.ProductInfo">
+        INSERT INTO product_info
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bean.productId != null">
+                product_id,
+            </if>
+            <if test="bean.productName != null">
+                product_name,
+            </if>
+            <if test="bean.cover != null">
+                cover,
+            </if>
+            <if test="bean.price != null">
+                price,
+            </if>
+            <if test="bean.productDescription != null">
+                product_description,
+            </if>
+            <if test="bean.createTime != null">
+                create_time,
+            </if>
+            <if test="bean.onsaleType != null">
+                onsale_type,
+            </if>
+            <if test="bean.integral != null">
+                integral,
+            </if>
+            <if test="bean.sort != null">
+                sort,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bean.productId!=null">
+                #{bean.productId},
+            </if>
+            <if test="bean.productName!=null">
+                #{bean.productName},
+            </if>
+            <if test="bean.cover!=null">
+                #{bean.cover},
+            </if>
+            <if test="bean.price!=null">
+                #{bean.price},
+            </if>
+            <if test="bean.productDescription!=null">
+                #{bean.productDescription},
+            </if>
+            <if test="bean.createTime!=null">
+                #{bean.createTime},
+            </if>
+            <if test="bean.onsaleType!=null">
+                #{bean.onsaleType},
+            </if>
+            <if test="bean.integral!=null">
+                #{bean.integral},
+            </if>
+            <if test="bean.sort!=null">
+                #{bean.sort},
+            </if>
+        </trim>
+        on DUPLICATE key update
+        <trim prefix="" suffix="" suffixOverrides=",">
+            <if test="bean.productId!=null">
+                product_id = VALUES(product_id),
+            </if>
+            <if test="bean.productName!=null">
+                product_name = VALUES(product_name),
+            </if>
+            <if test="bean.cover!=null">
+                cover = VALUES(cover),
+            </if>
+            <if test="bean.price!=null">
+                price = VALUES(price),
+            </if>
+            <if test="bean.productDescription!=null">
+                product_description = VALUES(product_description),
+            </if>
+            <if test="bean.createTime!=null">
+                create_time = VALUES(create_time),
+            </if>
+            <if test="bean.onsaleType!=null">
+                onsale_type = VALUES(onsale_type),
+            </if>
+            <if test="bean.integral!=null">
+                integral = VALUES(integral),
+            </if>
+            <if test="bean.sort!=null">
+                sort = VALUES(sort),
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 添加 （批量插入）-->
+    <insert id="insertBatch" parameterType="com.easymusic.entity.po.ProductInfo">
+        INSERT INTO product_info(
+        product_id,
+        product_name,
+        cover,
+        price,
+        product_description,
+        create_time,
+        onsale_type,
+        integral,
+        sort
+        )values
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.productId},
+            #{item.productName},
+            #{item.cover},
+            #{item.price},
+            #{item.productDescription},
+            #{item.createTime},
+            #{item.onsaleType},
+            #{item.integral},
+            #{item.sort}
+            )
+        </foreach>
+    </insert>
+
+    <!-- 批量新增修改 （批量插入）-->
+    <insert id="insertOrUpdateBatch" parameterType="com.easymusic.entity.po.ProductInfo">
+        INSERT INTO product_info(
+        product_id,
+        product_name,
+        cover,
+        price,
+        product_description,
+        create_time,
+        onsale_type,
+        integral,
+        sort
+        )values
+        <foreach collection="list" item="item" separator=",">
+            (
+            #{item.productId},
+            #{item.productName},
+            #{item.cover},
+            #{item.price},
+            #{item.productDescription},
+            #{item.createTime},
+            #{item.onsaleType},
+            #{item.integral},
+            #{item.sort}
+            )
+        </foreach>
+        on DUPLICATE key update
+        product_id = VALUES(product_id),
+        product_name = VALUES(product_name),
+        cover = VALUES(cover),
+        price = VALUES(price),
+        product_description = VALUES(product_description),
+        create_time = VALUES(create_time),
+        onsale_type = VALUES(onsale_type),
+        integral = VALUES(integral),
+        sort = VALUES(sort)
+    </insert>
+
+    <!--多条件修改-->
+    <update id="updateByParam" parameterType="com.easymusic.entity.query.ProductInfoQuery">
+        UPDATE product_info p
+        <set>
+            <if test="bean.productId != null">
+                product_id = #{bean.productId},
+            </if>
+            <if test="bean.productName != null">
+                product_name = #{bean.productName},
+            </if>
+            <if test="bean.cover != null">
+                cover = #{bean.cover},
+            </if>
+            <if test="bean.price != null">
+                price = #{bean.price},
+            </if>
+            <if test="bean.productDescription != null">
+                product_description = #{bean.productDescription},
+            </if>
+            <if test="bean.createTime != null">
+                create_time = #{bean.createTime},
+            </if>
+            <if test="bean.onsaleType != null">
+                onsale_type = #{bean.onsaleType},
+            </if>
+            <if test="bean.integral != null">
+                integral = #{bean.integral},
+            </if>
+            <if test="bean.sort != null">
+                sort = #{bean.sort},
+            </if>
+        </set>
+        <include refid="query_condition"/>
+    </update>
+
+    <!--多条件删除-->
+    <delete id="deleteByParam">
+        delete p from product_info p
+        <include refid="query_condition"/>
+    </delete>
+
+    <!-- 根据ProductId修改-->
+    <update id="updateByProductId" parameterType="com.easymusic.entity.po.ProductInfo">
+        UPDATE product_info
+        <set>
+            <if test="bean.productName != null">
+                product_name = #{bean.productName},
+            </if>
+            <if test="bean.cover != null">
+                cover = #{bean.cover},
+            </if>
+            <if test="bean.price != null">
+                price = #{bean.price},
+            </if>
+            <if test="bean.productDescription != null">
+                product_description = #{bean.productDescription},
+            </if>
+            <if test="bean.createTime != null">
+                create_time = #{bean.createTime},
+            </if>
+            <if test="bean.onsaleType != null">
+                onsale_type = #{bean.onsaleType},
+            </if>
+            <if test="bean.integral != null">
+                integral = #{bean.integral},
+            </if>
+            <if test="bean.sort != null">
+                sort = #{bean.sort},
+            </if>
+        </set>
+        where product_id=#{productId}
+    </update>
+
+    <!-- 根据ProductId删除-->
+    <delete id="deleteByProductId">
+        delete from product_info where product_id=#{productId}
+    </delete>
+
+    <!-- 根据PrimaryKey获取对象-->
+    <select id="selectByProductId" resultMap="base_result_map">
+        select
+        <include refid="base_column_list"/>
+        from product_info p where product_id=#{productId}
+    </select>
+
+    <update id="changeProductSort">
+        <foreach collection="productList" separator=";" item="item">
+            update product_info set sort = #{item.sort} where product_id = #{item.productId}
+        </foreach>
+    </update>
+</mapper>

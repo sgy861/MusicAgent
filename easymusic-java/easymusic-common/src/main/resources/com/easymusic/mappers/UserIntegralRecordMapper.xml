@@ -1,0 +1,329 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.easymusic.mappers.UserIntegralRecordMapper">
+
+	<!--实体映射-->
+	<resultMap id="base_result_map" type="com.easymusic.entity.po.UserIntegralRecord">
+		<!--自增ID-->
+		<id column="record_id" property="recordId"  />
+		<!--用户ID-->
+		<result column="user_id" property="userId"  />
+		<!--积分-->
+		<result column="change_integral" property="changeIntegral"  />
+		<!--创建时间-->
+		<result column="create_time" property="createTime"  />
+		<!--记录类型 0:创作失败退回 1:创作消耗 2:充值 3:系统赠送-->
+		<result column="record_type" property="recordType"  />
+		<!--业务ID-->
+		<result column="business_id" property="businessId"  />
+		<!--充值金额-->
+		<result column="amount" property="amount"  />
+	</resultMap>
+
+
+	<!-- 通用查询结果列-->
+	<sql id="base_column_list">
+		 u.record_id,u.user_id,u.change_integral,u.create_time,u.record_type,
+		 u.business_id,u.amount
+	</sql>
+
+	<sql id="base_condition_filed">
+			<if test="query.recordId != null">
+				 and  u.record_id = #{query.recordId}
+			</if>
+			<if test="query.userId != null and query.userId!=''">
+				 and  u.user_id = #{query.userId}
+			</if>
+			<if test="query.changeIntegral != null">
+				 and  u.change_integral = #{query.changeIntegral}
+			</if>
+			<if test="query.createTime != null and query.createTime!=''">
+				 <![CDATA[ and  u.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.recordType != null">
+				 and  u.record_type = #{query.recordType}
+			</if>
+			<if test="query.businessId != null and query.businessId!=''">
+				 and  u.business_id = #{query.businessId}
+			</if>
+			<if test="query.amount != null">
+				 and  u.amount = #{query.amount}
+			</if>
+	</sql>
+
+	<!-- 通用查询条件列-->
+	<sql id="query_condition">
+	 <where>
+			<include refid="base_condition_filed" />
+			<if test="query.userIdFuzzy!= null  and query.userIdFuzzy!=''">
+				 and  u.user_id like concat('%', #{query.userIdFuzzy}, '%')
+			</if>
+			<if test="query.createTimeStart!= null and query.createTimeStart!=''">
+				 <![CDATA[ and  u.create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+			</if>
+			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
+				 <![CDATA[ and  u.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.businessIdFuzzy!= null  and query.businessIdFuzzy!=''">
+				 and  u.business_id like concat('%', #{query.businessIdFuzzy}, '%')
+			</if>
+	 </where>
+	</sql>
+
+	<!-- 查询集合-->
+	<select id="selectList" resultMap="base_result_map" >
+		 SELECT <include refid="base_column_list" /> FROM user_integral_record u <include refid="query_condition" />
+		 <if test="query.orderBy!=null">
+			 order by ${query.orderBy}
+		 </if>
+		 <if test="query.simplePage!=null">
+			 limit #{query.simplePage.start},#{query.simplePage.end}
+		 </if>
+	</select>
+
+	<!-- 查询数量-->
+	<select id="selectCount" resultType="java.lang.Integer" >
+		 SELECT count(1) FROM user_integral_record u <include refid="query_condition" />
+	</select>
+
+	<!-- 插入 （匹配有值的字段）-->
+	<insert id="insert" parameterType="com.easymusic.entity.po.UserIntegralRecord">
+		<selectKey keyProperty="bean.recordId" resultType="Integer" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+		 INSERT INTO user_integral_record
+		 <trim prefix="(" suffix=")" suffixOverrides="," >
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.changeIntegral != null">
+				 change_integral,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.recordType != null">
+				 record_type,
+			</if>
+			<if test="bean.businessId != null">
+				 business_id,
+			</if>
+			<if test="bean.amount != null">
+				 amount,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides="," >
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.changeIntegral!=null">
+				 #{bean.changeIntegral},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.recordType!=null">
+				 #{bean.recordType},
+			</if>
+			<if test="bean.businessId!=null">
+				 #{bean.businessId},
+			</if>
+			<if test="bean.amount!=null">
+				 #{bean.amount},
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 插入或者更新 （匹配有值的字段）-->
+	<insert id="insertOrUpdate" parameterType="com.easymusic.entity.po.UserIntegralRecord">
+		 INSERT INTO user_integral_record
+		 <trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="bean.recordId != null">
+				 record_id,
+			</if>
+			<if test="bean.userId != null">
+				 user_id,
+			</if>
+			<if test="bean.changeIntegral != null">
+				 change_integral,
+			</if>
+			<if test="bean.createTime != null">
+				 create_time,
+			</if>
+			<if test="bean.recordType != null">
+				 record_type,
+			</if>
+			<if test="bean.businessId != null">
+				 business_id,
+			</if>
+			<if test="bean.amount != null">
+				 amount,
+			</if>
+		 </trim>
+		 <trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="bean.recordId!=null">
+				 #{bean.recordId},
+			</if>
+			<if test="bean.userId!=null">
+				 #{bean.userId},
+			</if>
+			<if test="bean.changeIntegral!=null">
+				 #{bean.changeIntegral},
+			</if>
+			<if test="bean.createTime!=null">
+				 #{bean.createTime},
+			</if>
+			<if test="bean.recordType!=null">
+				 #{bean.recordType},
+			</if>
+			<if test="bean.businessId!=null">
+				 #{bean.businessId},
+			</if>
+			<if test="bean.amount!=null">
+				 #{bean.amount},
+			</if>
+		 </trim>
+		 on DUPLICATE key update 
+		 <trim prefix="" suffix="" suffixOverrides=",">
+			<if test="bean.userId!=null">
+				 user_id = VALUES(user_id),
+			</if>
+			<if test="bean.changeIntegral!=null">
+				 change_integral = VALUES(change_integral),
+			</if>
+			<if test="bean.createTime!=null">
+				 create_time = VALUES(create_time),
+			</if>
+			<if test="bean.recordType!=null">
+				 record_type = VALUES(record_type),
+			</if>
+			<if test="bean.businessId!=null">
+				 business_id = VALUES(business_id),
+			</if>
+			<if test="bean.amount!=null">
+				 amount = VALUES(amount),
+			</if>
+		 </trim>
+	</insert>
+
+	<!-- 添加 （批量插入）-->
+	<insert id="insertBatch" parameterType="com.easymusic.entity.po.UserIntegralRecord" useGeneratedKeys="true" keyProperty="recordId">
+		 INSERT INTO user_integral_record(
+			 user_id,
+			 change_integral,
+			 create_time,
+			 record_type,
+			 business_id,
+			 amount
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.userId},
+				 #{item.changeIntegral},
+				 #{item.createTime},
+				 #{item.recordType},
+				 #{item.businessId},
+				 #{item.amount}
+			 )
+		 </foreach>
+	</insert>
+
+	<!-- 批量新增修改 （批量插入）-->
+	<insert id="insertOrUpdateBatch" parameterType="com.easymusic.entity.po.UserIntegralRecord">
+		 INSERT INTO user_integral_record(
+			 user_id,
+			 change_integral,
+			 create_time,
+			 record_type,
+			 business_id,
+			 amount
+		 )values
+		 <foreach collection="list" item="item" separator=",">
+			 (
+				 #{item.userId},
+				 #{item.changeIntegral},
+				 #{item.createTime},
+				 #{item.recordType},
+				 #{item.businessId},
+				 #{item.amount}
+			 )
+		 </foreach>
+			on DUPLICATE key update 
+			user_id = VALUES(user_id),
+			change_integral = VALUES(change_integral),
+			create_time = VALUES(create_time),
+			record_type = VALUES(record_type),
+			business_id = VALUES(business_id),
+			amount = VALUES(amount)
+	</insert>
+
+	<!--多条件修改-->
+	<update id="updateByParam" parameterType="com.easymusic.entity.query.UserIntegralRecordQuery">
+		 UPDATE user_integral_record u
+ 		 <set> 
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+			<if test="bean.changeIntegral != null">
+				 change_integral = #{bean.changeIntegral},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.recordType != null">
+				 record_type = #{bean.recordType},
+			</if>
+			<if test="bean.businessId != null">
+				 business_id = #{bean.businessId},
+			</if>
+			<if test="bean.amount != null">
+				 amount = #{bean.amount},
+			</if>
+ 		 </set>
+ 		 <include refid="query_condition" />
+	</update>
+
+	<!--多条件删除-->
+	<delete id="deleteByParam">
+		 delete u from user_integral_record u
+ 		 <include refid="query_condition" />
+	</delete>
+
+	<!-- 根据RecordId修改-->
+	<update id="updateByRecordId" parameterType="com.easymusic.entity.po.UserIntegralRecord">
+		 UPDATE user_integral_record
+ 		 <set> 
+			<if test="bean.userId != null">
+				 user_id = #{bean.userId},
+			</if>
+			<if test="bean.changeIntegral != null">
+				 change_integral = #{bean.changeIntegral},
+			</if>
+			<if test="bean.createTime != null">
+				 create_time = #{bean.createTime},
+			</if>
+			<if test="bean.recordType != null">
+				 record_type = #{bean.recordType},
+			</if>
+			<if test="bean.businessId != null">
+				 business_id = #{bean.businessId},
+			</if>
+			<if test="bean.amount != null">
+				 amount = #{bean.amount},
+			</if>
+ 		 </set>
+ 		 where record_id=#{recordId}
+	</update>
+
+	<!-- 根据RecordId删除-->
+	<delete id="deleteByRecordId">
+		delete from user_integral_record where record_id=#{recordId}
+	</delete>
+
+	<!-- 根据PrimaryKey获取对象-->
+	<select id="selectByRecordId" resultMap="base_result_map" >
+		select <include refid="base_column_list" /> from user_integral_record u where record_id=#{recordId}
+	</select>
+
+</mapper>

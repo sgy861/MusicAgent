@@ -1,0 +1,67 @@
+server:
+  port: 8090
+  servlet:
+    context-path: /api
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/easymusic?allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2B8&characterEncoding=utf8
+    username: root
+    password: 12345
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  task:
+    scheduling:
+      pool:
+        size: 5
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    listener:
+      simple:
+        acknowledge-mode: manual
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+
+#项目目录
+project:
+  folder: c:/webser/web_app/easymusic/
+  #日志级别配置
+log:
+  root:
+  level: debug
+#域名
+web:
+  domain: http://localhost:8090
+# 接口key
+tianpuyue:
+  api:
+    key: 123456 #ai接口key
+    domain: http://easyshop.byte361.com/api #配置为http://easyshop.byte361.com/api 走老罗模拟的接口，填写https://api.tianpuyue.cn 走天普乐官方
+    courseOrderId: 12312 #这里配置购买的easyshop的课程的订单号，在easyshop.byte361.com 个人中心 已购课程 右上角的订单号，复制过来
+# 微信支付
+pay:
+  wechat:
+    appid: wx123456  #微信支付应用ID
+    mchid: 16123456  #微信支付商户ID
+    serialNo: 5D31441111111111111  # 微信支付证书编号
+    apiclientKeypath: c:/webser/web_app/easymusic/key/apiclient_key.pem  #微信证书文件
+    apiV3key: 1234567890  #apiv3 签名密钥
+  payType: laoluo  #配置为laoluo就是走老罗封装的支付接口 使用wechat就是直接走官方（自己有商户号可以使用这种方式），
+  payDomain: http://easyshop.byte361.com/api #上面payType配置为老罗那么这个域名就用我商城的域名，有微信官方商户号就配置成 https://api.mch.weixin.qq.com
+  courseOrderId: 12312 #这里配置购买的easyshop的课程的订单号，在easyshop.byte361.com 个人中心 已购课程 右上角的订单号，复制过来
+#是否定时获取支付结果,音乐生成结果
+auto:
+  checkPay: true
+  checkMusic: true
+
+# Kimi (Moonshot AI) & Milvus Config
+kimi:
+  api:
+    key: sk-CNmSLOZOPUjTiFgyyO7h4C7VuepTEyhJTGxUmyQiguqC5rpU
+    url: https://api.moonshot.cn/v1
+    model: moonshot-v1-8k
+milvus:
+  host: localhost
+  port: 19530

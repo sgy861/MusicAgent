@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.easymusic.mappers.LocalMessageMapper">
+
+    <resultMap id="base_result_map" type="com.easymusic.entity.po.LocalMessage">
+        <result column="message_id" property="messageId"/>
+        <result column="queue_name" property="queueName"/>
+        <result column="exchange_name" property="exchangeName"/>
+        <result column="routing_key" property="routingKey"/>
+        <result column="message_content" property="messageContent"/>
+        <result column="status" property="status"/>
+        <result column="retry_count" property="retryCount"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="base_column_list">
+        message_id, queue_name, exchange_name, routing_key, message_content, status, retry_count, create_time, update_time
+    </sql>
+
+    <insert id="insert" parameterType="com.easymusic.entity.po.LocalMessage">
+        INSERT INTO local_message (
+            message_id, queue_name, exchange_name, routing_key, message_content, status, retry_count, create_time, update_time
+        ) VALUES (
+            #{bean.messageId}, #{bean.queueName}, #{bean.exchangeName}, #{bean.routingKey}, #{bean.messageContent}, #{bean.status}, #{bean.retryCount}, #{bean.createTime}, #{bean.updateTime}
+        )
+    </insert>
+
+    <update id="updateByMessageId" parameterType="com.easymusic.entity.po.LocalMessage">
+        UPDATE local_message
+        <set>
+            <if test="bean.queueName != null">
+                queue_name = #{bean.queueName},
+            </if>
+            <if test="bean.exchangeName != null">
+                exchange_name = #{bean.exchangeName},
+            </if>
+            <if test="bean.routingKey != null">
+                routing_key = #{bean.routingKey},
+            </if>
+            <if test="bean.messageContent != null">
+                message_content = #{bean.messageContent},
+            </if>
+            <if test="bean.status != null">
+                status = #{bean.status},
+            </if>
+            <if test="bean.retryCount != null">
+                retry_count = #{bean.retryCount},
+            </if>
+            <if test="bean.createTime != null">
+                create_time = #{bean.createTime},
+            </if>
+            <if test="bean.updateTime != null">
+                update_time = #{bean.updateTime},
+            </if>
+        </set>
+        WHERE message_id = #{messageId}
+    </update>
+
+    <select id="selectByMessageId" resultMap="base_result_map">
+        SELECT <include refid="base_column_list"/>
+        FROM local_message
+        WHERE message_id = #{messageId}
+    </select>
+
+    <select id="selectUnsentMessages" resultMap="base_result_map">
+        SELECT <include refid="base_column_list"/>
+        FROM local_message
+        WHERE (status = 0 OR status = 2)
+          AND retry_count &lt; #{maxRetry}
+          AND update_time &lt; date_sub(now(), interval 10 second)
+    </select>
+
+</mapper>
