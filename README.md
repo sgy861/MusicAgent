@@ -17,22 +17,22 @@
 
 ```mermaid
 graph TD
-    subgraph 客户端 (Client)
+    subgraph "客户端 (Client)"
         VueWeb[用户端: Vue 3 / Vite]
         VueAdmin[管理端: Vue 3 / Vite]
     end
 
-    subgraph 网关与代理 (Gateway / Proxy)
+    subgraph "网关与代理 (Gateway / Proxy)"
         NginxWeb[easymusic-front-web Nginx]
         NginxAdmin[easymusic-front-admin Nginx]
     end
 
-    subgraph 后端核心服务 (Core Backend)
+    subgraph "后端核心服务 (Core Backend)"
         JavaWeb[easymusic-web: HTTP & Netty WS]
         JavaAdmin[easymusic-admin: 管理 API]
     end
 
-    subgraph 分布式中间件 & 数据库 (Middleware & Storage)
+    subgraph "分布式中间件 & 数据库 (Middleware & Storage)"
         MySQL[(MySQL 8.0 主库)]
         Redis[(Redis 7.0 路由与缓存)]
         RabbitMQ[(RabbitMQ 3.12 消息总线)]
