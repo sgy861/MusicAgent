@@ -16,6 +16,11 @@ import com.easymusic.utils.StringTools;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.util.Date;
@@ -27,6 +32,25 @@ import java.util.List;
  */
 @Service("userIntegralRecordService")
 public class UserIntegralRecordServiceImpl implements UserIntegralRecordService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserIntegralRecordServiceImpl.class);
+
+    private static final String DEDUCT_LUA_SCRIPT =
+            "if redis.call('exists', KEYS[1]) == 0 then " +
+            "  return -1; " +
+            "end; " +
+            "local current = tonumber(redis.call('get', KEYS[1])); " +
+            "local deduct = tonumber(ARGV[1]); " +
+            "if current < deduct then " +
+            "  return 0; " +
+            "end; " +
+            "redis.call('decrby', KEYS[1], deduct); " +
+            "return 1; ";
+
+    private final RedisScript<Long> deductScript = new DefaultRedisScript<>(DEDUCT_LUA_SCRIPT, Long.class);
+
+    @Resource
+    private RedisTemplate<String, Object> redisTemplate;
 
     @Resource
     private UserIntegralRecordMapper<UserIntegralRecord, UserIntegralRecordQuery> userIntegralRecordMapper;
@@ -153,5 +177,41 @@ public class UserIntegralRecordServiceImpl implements UserIntegralRecordService 
         records.setRecordType(recordTypeEnum.getType());
         records.setAmount(amount);
         this.userIntegralRecordMapper.insert(records);
+    }
+
+    @Override
+    public boolean preDeductUserQuota(String userId, int amount) {
+        String key = com.easymusic.entity.constants.Constants.REDIS_KEY_USER_QUOTA + userId;
+        Long result = redisTemplate.execute(deductScript, java.util.Collections.singletonList(key), String.valueOf(amount));
+        
+        if (result == null || result == -1) {
+            log.info("Quota cache miss for user: {}. Loading from database.", userId);
+            UserInfo userInfo = userInfoMapper.selectByUserId(userId);
+            if (userInfo == null) {
+                throw new BusinessException("用户不存在");
+            }
+            int currentIntegral = userInfo.getIntegral();
+            redisTemplate.opsForValue().set(key, currentIntegral, 24, java.util.concurrent.TimeUnit.HOURS);
+            
+            result = redisTemplate.execute(deductScript, java.util.Collections.singletonList(key), String.valueOf(amount));
+        }
+
+        if (result != null && result == 1) {
+            log.info("Successfully pre-deducted quota of {} for user: {} in Redis", amount, userId);
+            return true;
+        } else {
+            log.warn("Failed to pre-deduct quota of {} for user: {} (insufficient quota)", amount, userId);
+            throw new BusinessException("用户积分不足");
+        }
+    }
+
+    @Override
+    public void rebateUserQuota(String userId, int amount) {
+        String key = com.easymusic.entity.constants.Constants.REDIS_KEY_USER_QUOTA + userId;
+        Boolean hasKey = redisTemplate.hasKey(key);
+        if (Boolean.TRUE.equals(hasKey)) {
+            redisTemplate.opsForValue().increment(key, amount);
+            log.info("Rebated quota of {} for user: {} in Redis", amount, userId);
+        }
     }
 }

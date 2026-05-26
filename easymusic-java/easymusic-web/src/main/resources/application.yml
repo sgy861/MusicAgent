@@ -20,6 +20,8 @@ spring:
     listener:
       simple:
         acknowledge-mode: manual
+    publisher-confirm-type: correlated
+    publisher-returns: true
 mybatis:
   configuration:
     map-underscore-to-camel-case: true

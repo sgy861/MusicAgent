@@ -3,6 +3,7 @@ package com.easymusic.netty;
 import com.easymusic.entity.po.ImMessage;
 import com.easymusic.redis.RedisComponent;
 import com.easymusic.service.ImMessageService;
+import com.easymusic.service.RecommendAgentService;
 import com.easymusic.utils.JsonUtils;
 import com.easymusic.config.RabbitConfig;
 import io.netty.bootstrap.ServerBootstrap;
@@ -43,6 +44,9 @@ public class NettyServer implements ApplicationRunner {
 
     @Resource
     private ImMessageService imMessageService;
+
+    @Resource
+    private RecommendAgentService recommendAgentService;
 
     @Resource
     private AmqpAdmin amqpAdmin;
@@ -97,7 +101,7 @@ public class NettyServer implements ApplicationRunner {
                     .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
                     .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
                     // 装配 pipeline
-                    .childHandler(new WebSocketChannelInitializer(redisComponent, channelManager, imMessageService));
+                    .childHandler(new WebSocketChannelInitializer(redisComponent, channelManager, imMessageService, recommendAgentService));
 
             log.info("Starting Netty Server on port {}...", nettyPort);
             serverChannelFuture = bootstrap.bind(nettyPort).sync();

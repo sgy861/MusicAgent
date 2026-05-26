@@ -224,6 +224,8 @@ public class MusicInfoServiceImpl implements MusicInfoService {
             UserIntegralRecord record = list.get(0);
             userIntegralRecordService.changeUserIntegral(UserIntegralRecordTypeEnum.CREATE_MUSIC_BACK, musicInfo.getCreationId(), musicInfo.getUserId(),
                     -record.getChangeIntegral(), null);
+            // 自动回补 Redis 内存中的用户配额
+            userIntegralRecordService.rebateUserQuota(musicInfo.getUserId(), -record.getChangeIntegral());
         }
         MusicInfoQuery musicInfoQuery = new MusicInfoQuery();
         musicInfoQuery.setTaskId(resultDTO.getTaskId());

@@ -185,7 +185,25 @@ public class MusicCreationServiceImpl implements MusicCreationService {
         Integer integral = Integer.parseInt(sysDict.getDictValue());
         String apiCode = modelInfo.apiCode;
 
-        //扣减积分
+        // Redis Lua 脚本内存级预扣减配额，防范高并发下的额度超发
+        userIntegralRecordService.preDeductUserQuota(musicCreation.getUserId(), integral);
+
+        // 注册事务同步器，在数据库事务提交失败/回滚时，对 Redis 中的预扣减配额进行自动回补
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCompletion(int status) {
+                        if (status != STATUS_COMMITTED) {
+                            log.info("Database transaction failed or rolled back. Rebating pre-deducted quota of {} for user: {} in Redis", integral, musicCreation.getUserId());
+                            userIntegralRecordService.rebateUserQuota(musicCreation.getUserId(), integral);
+                        }
+                    }
+                }
+            );
+        }
+
+        // 扣减积分
         userIntegralRecordService.changeUserIntegral(UserIntegralRecordTypeEnum.CREATE_MUSIC, creationId, musicCreation.getUserId(), -integral, null);
 
         Date curDate = new Date();

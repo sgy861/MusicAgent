@@ -2,6 +2,7 @@ package com.easymusic.netty;
 
 import com.easymusic.redis.RedisComponent;
 import com.easymusic.service.ImMessageService;
+import com.easymusic.service.RecommendAgentService;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.HttpObjectAggregator;
@@ -16,11 +17,13 @@ public class WebSocketChannelInitializer extends ChannelInitializer<SocketChanne
     private final RedisComponent redisComponent;
     private final ChannelManager channelManager;
     private final ImMessageService imMessageService;
+    private final RecommendAgentService recommendAgentService;
 
-    public WebSocketChannelInitializer(RedisComponent redisComponent, ChannelManager channelManager, ImMessageService imMessageService) {
+    public WebSocketChannelInitializer(RedisComponent redisComponent, ChannelManager channelManager, ImMessageService imMessageService, RecommendAgentService recommendAgentService) {
         this.redisComponent = redisComponent;
         this.channelManager = channelManager;
         this.imMessageService = imMessageService;
+        this.recommendAgentService = recommendAgentService;
     }
 
     @Override
@@ -39,6 +42,6 @@ public class WebSocketChannelInitializer extends ChannelInitializer<SocketChanne
         ch.pipeline().addLast(new WebSocketServerProtocolHandler("/ws"));
         
         // 5. 消息逻辑处理器
-        ch.pipeline().addLast(new WebSocketHandler(channelManager, imMessageService));
+        ch.pipeline().addLast(new WebSocketHandler(channelManager, imMessageService, recommendAgentService));
     }
 }

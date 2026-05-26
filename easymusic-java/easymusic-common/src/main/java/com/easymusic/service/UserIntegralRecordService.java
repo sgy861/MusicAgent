@@ -72,4 +72,8 @@ public interface UserIntegralRecordService {
     Integer deleteUserIntegralRecordByRecordId(Integer recordId);
 
     void changeUserIntegral(UserIntegralRecordTypeEnum recordTypeEnum, String businessId, String userId, Integer changeIntegral, BigDecimal amount);
+
+    boolean preDeductUserQuota(String userId, int amount);
+
+    void rebateUserQuota(String userId, int amount);
 }

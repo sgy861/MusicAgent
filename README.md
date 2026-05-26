@@ -55,26 +55,29 @@ graph TD
 
 ## 🌟 核心功能与技术亮点
 
-### 1. 🤖 个性化 AI 音乐推荐智能体 (RAG Agent)
-基于大语言模型（LLM）与向量数据库构建的音乐风格推荐智能体，在用户开启创作时主动推荐灵感。
-- **RAG 检索增强生成**：将平台生成的歌曲 Prompt、风格标签进行词向量化（Embedding），同步存储于 **Milvus 向量数据库** 中，根据用户的偏好画像进行近邻检索（ANN Search）。
-- **增量偏好画像更新 (增量修改法)**：用户点赞、收藏歌曲时，系统设置 Redis 脏标记并延迟触发画像更新。通过 `last_action_id` 游标实现**增量数据过滤**，仅将新动作的差量（Delta）通过 Kimi LLM 融合进用户画像，**规避了大模型上下文窗口溢出，降低了 Token 消耗，并防止了历史偏好被完全覆盖**。
+### 1. ⚡ 高并发 Netty + WebSocket 实时通信与流式传输引擎
+基于 Netty 构建统一的 WebSocket 实时通信引擎（运行在独立端口 `8099`），单节点支撑万级并发。
+- ** Reactor 线程模型调优**：`bossGroup` 负责处理连接接入，`workerGroup` 配合 `PooledByteBufAllocator` 进行内存池化管理。调优 TCP 参数（`SO_BACKLOG = 1024`, `SO_KEEPALIVE = true`, `TCP_NODELAY = true`）最大化提升网络吞吐量，降低传输时延。
+- **精细化连接管理**：采用 `IdleStateHandler` 进行 60 秒心跳检测与空闲剔除，秒级关闭非活跃连接，防止无效连接堆积占用系统文件描述符（FD）。
+- **统一通道流式复用**：Netty 通道不仅承载 IM 私聊与点评弹幕广播，还复用作 **AI Agent 推理思考链（CoT）与生成结果的 Streaming 分块传输通道**。客户端可实时感知 AI 的推演思维逻辑（CoT 实时显示），保障低延迟流畅交互。
+- **异步性能解耦**：将 AI Agent 的 RAG 检索（Milvus）与大模型推理等同步高耗时操作彻底 **offload 出 Netty Reactor 线程**，提交到异步公共线程池执行，确保通信底座的无锁与非阻塞高性能表现。
 
-### 2. 📬 基于发件箱模式的可靠 AI 音乐生成引擎 (Outbox Pattern)
-保障 AI 歌曲生成与积分扣减在强并发下的最终一致性。
-- **发件箱模式（Outbox Pattern）**：扣减积分、生成音乐记录与插入本地消息表（`local_message`）在同一个 MySQL 事务中提交，确保消息 100% 不丢失。
-- **双重补偿与延迟重试**：利用 Spring 事务同步监听器（Transaction Synchronization）在事务提交后向 RabbitMQ 发送消息。通过 **RabbitMQ 延迟队列**（30秒轮询检查、5分钟强制超时）与后台定时任务兜底，实现 AI 生成超时自动退款与重试。
+### 2. 🤖 个性化推荐 Agent 模块 (RAG Agent)
+基于 LangChain4j 构建音乐风格推荐智能体，在用户开启创作时主动推荐定制化灵感。
+- **RAG 检索增强生成**：将平台优秀创作的 Prompt、风格标签通过本地 BGE 模型结合 ONNX Runtime 加速生成 512 维向量，同步存储于 **Milvus 向量数据库** 中，根据用户的偏好画像进行 Top-K 近似最近邻检索（ANN Search）召回相似创作作为大模型上下文。
+- **点赞行为防抖与增量画像提炼**：通过 RabbitMQ 延迟队列对点赞行为进行 30 秒防抖合并处理。基于 `last_action_id` 游标实现**增量特征提炼**，驱动 Kimi 大模型仅提炼新增行为的偏好变化，避免全量重新计算造成的算力与 Token 浪费。
 
-### 3. ⚡ 高并发实时 IM & 点评通信引擎 (Netty + WebSocket)
-基于 Netty 构建的专用 WebSocket 实时通信通道（运行在独立端口 `8099`），支持单节点万级并发。
-- **主从 Reactor 线程模型**：`bossGroup` 负责处理连接接入，`workerGroup` 配合 `PooledByteBufAllocator` 进行内存池化管理，调优 TCP 参数（`SO_BACKLOG = 1024`, `SO_KEEPALIVE = true`, `TCP_NODELAY = true`）最大化提升吞吐量。
-- **精细化连接管理**：采用 `IdleStateHandler` 进行 60 秒心跳检测，秒级剔除空闲或“假在线”连接，防止死连接占用系统文件描述符（FD）。
-- **精准路由与跨节点投递**：基于 Redis 维护 `im:route:{userId} -> {nodeAddress}` 动态路由表。每个 Netty 节点在启动时动态向 RabbitMQ 声明一个**临时、排他、自动删除**的队列，绑定 Direct 交换机进行点对点跨节点投递，绑定 Fanout 交换机进行歌曲点评房间的实时弹幕广播。
-- **可靠消息投递 (Manual Ack)**：开启 RabbitMQ 手动确认模式，在 WebSocket 发送成功且 MySQL 消息状态更新为已读后方执行 Ack。用户离线时消息保留在 MySQL，重连时自动触发离线消息补偿推送。
+### 3. 📬 分布式路由与可靠消息投递 (Outbox Pattern)
+保障在线 / 离线消息的绝对可靠处理与跨节点多端同步，解决分布式环境下的消息丢失与乱序问题。
+- **分布式路由表**：基于 Redis 维护全局动态连接路由表 `im:route:{userId} -> {nodeAddress}`，精准定位用户所在节点。每个 Netty 节点在启动时动态绑定 RabbitMQ 专属路由，确保跨节点消息的精准定位与投递。
+- **RabbitMQ 发送端异步 Confirm 状态机**：启用 `publisher-confirm-type: correlated` 和 `publisher-returns: true`。本地消息表 `local_message` 先以 `0 (SENDING)` 状态持久化，在 RabbitMQ 异步回调确认（ACK）后流转为 `1 (SUCCESS)`，未确认或退回则标记为 `2 (FAIL)`，配合后台补偿任务进行可靠重试。
 
-### 4. 🐳 一键式容器化项目管理 (Docker Compose)
-整个项目支持一键 Docker 部署。
-- 包含了对前端 Nginx 多阶段构建、后台 JRE 21 运行环境、数据库自动导入 SQL 结构，以及包含 Milvus 及其 Etcd/MinIO 依赖在内的全栈式环境编排。
+### 4. 🔒 Redis Lua 脚本原子配额防刷与回补机制
+针对第三方 AI 音乐推理的高耗时（30s ~ 2min）与高并发生成场景，设计全内存级高安全积分配额管控体系。
+- **内存级 Lua 原子扣减**：利用 Redis Lua 脚本在内存中原子判定用户余额并预扣减配额，在高并发生成场景下精准防范额度超发。若缓存未命中，自动从数据库加载最新余额并缓存（24小时 TTL）。
+- **事务级联同步回滚**：在 Java 扣减配额时，注册 Spring 事务同步器（`TransactionSynchronization`）监听器。若数据库事务提交失败或发生异常回滚，自动在 Redis 缓存中回补（Rebate）对应配额。
+- **超时与失败原子自动回补**：配合延迟队列（30秒轮询、5分钟超时监控）级联监控任务状态。一旦判定 AI 音乐推理超时或生成失败，不仅物理回补 MySQL，还将增量回补 Redis 缓存中的额度。
+- **生命周期强一致**：对用户微信支付/充值码兑换（增量累加缓存）以及管理员修改积分（直接驱逐缓存强刷）进行了完整的生命周期一致性拦截。
 
 ---
 
@@ -83,10 +86,10 @@ graph TD
 | 维度 | 技术选型 |
 | :--- | :--- |
 | **后端核心** | Spring Boot 3.x, Spring MVC, MyBatis |
-| **网络通信** | Netty 4.1.x (WebSocket, Socket Options Tuning, Memory Pooling) |
+| **网络通信** | Netty 4.1.x (WebSocket, SO_BACKLOG, SO_KEEPALIVE, TCP_NODELAY, PooledByteBufAllocator) |
 | **数据存储** | MySQL 8.0, Redis 7.0 (Lettuce), MinIO (对象存储) |
-| **向量检索** | Milvus 2.3.5 (Vector Search), LangChain4j (RAG, Embedding) |
-| **消息队列** | RabbitMQ 3.12 (Direct/Fanout, Manual Ack, Delay Queue) |
+| **向量检索** | Milvus 2.3.5 (Vector Search), LangChain4j, ONNX Runtime (BGE Small V1.5) |
+| **消息队列** | RabbitMQ 3.12 (Direct/Fanout, Publisher Confirms, Manual Ack, Delay Queue) |
 | **前端框架** | Vue 3, Vite, Element Plus, TailwindCSS, Axios |
 | **开发与部署** | Docker, Docker Compose, Nginx |
 
@@ -133,25 +136,30 @@ docker-compose ps
 
 | 服务名称 | 访问地址 | 说明 |
 | :--- | :--- | :--- |
-| **用户端前端主页** | [http://localhost](http://localhost) (Port 80) | 提供音乐播放、AI创作及实时聊天互动 |
+| **用户端前端主页** | [http://localhost](http://localhost) (Port 80) | 提供音乐播放、AI 创作、流式灵感推荐及点评互动 |
 | **管理后台前端主页** | [http://localhost:8082](http://localhost:8082) (Port 8082) | 系统管理及作品审核 |
 | **RabbitMQ 控制台** | [http://localhost:15672](http://localhost:15672) | 账号密码：`guest`/`guest` |
 | **MinIO 存储控制台** | [http://localhost:9001](http://localhost:9001) | 账号密码：`minioadmin`/`minioadmin` |
-| **Netty WebSocket 端口** | `ws://localhost:8099/ws` | IM 引擎直接通信端口 |
+| **Netty WebSocket 端口** | `ws://localhost:8099/ws` | 实时 IM、点评及 AI 推荐流式分块通道 |
 
 ---
 
-## 🧪 自动化测试与功能验证
+## 🧪 演示与自动化测试
 
-本项目在 `C:\Users\sgy\.gemini\antigravity\brain\<conversation-id>\scratch\` 目录下自带了 WebSocket 和消息投递的集成测试脚本。
+### 1. 演示 AI 智能灵感推荐（CoT 思考流）
+1. 登录用户端前台并进入 **“AI 创作”** 页面。
+2. 平台 WebSocket 连接会自动接入 `ws://localhost:8099/ws`。
+3. 当您输入创作构想（如“一首阳光的夏日歌谣”）时，前端会防抖触发 `TRIGGER_RECOMMEND`。
+4. 后台 Netty 服务解析后，异步调用大模型。前端会**实时渲染 AI 的思考推演过程 (CoT)**。
+5. 思考结束后，前端卡片动态渐显呈现 AI 专属推荐的 **3 款定制化曲风配置**，点击即可直接一键应用到高级创作面板中。
 
-在部署好 Docker 环境后，您可以使用 Node.js 运行集成测试：
+### 2. 自动化测试脚本
+在部署好 Docker 环境后，您可以使用 Node.js 运行项目自带的集成测试：
 ```bash
 node ./easymusic-front/easymusic-front-web/test_im_engine.js
-# 或使用本地对应的 scratch 测试脚本路径
 ```
 **测试项覆盖**：
 1. 双客户端成功接入及握手 Token 校验。
 2. 歌曲点评房间（`JOIN_ROOM`）实时弹幕广播验证。
 3. 精准路由下点对点私聊消息的可靠投递。
-4. 客户端离线期间消息在 MySQL 暂存，客户端上线后可靠重传机制验证。
+4. 客户端离线期间消息在 MySQL 暂存，客户端重新上线后触发可靠重传机制验证。

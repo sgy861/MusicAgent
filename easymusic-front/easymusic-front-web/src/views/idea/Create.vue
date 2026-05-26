@@ -334,7 +334,10 @@ const initWebSocket = () => {
   }
 
   wsLoading.value = true
-  const wsUrl = `ws://localhost:8090/api/ws/recommend?token=${token}`
+  let wsUrl = `ws://localhost:8099/ws?token=${token}`
+  if (process.env.NODE_ENV === 'production') {
+    wsUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws?token=${token}`
+  }
   
   try {
     socket.value = new WebSocket(wsUrl)
@@ -343,6 +346,14 @@ const initWebSocket = () => {
       wsConnected.value = true
       wsLoading.value = false
       console.log('WebSocket connected')
+      // 握手成功后，立即主动发送首次推荐请求
+      const msg = {
+        action: 'TRIGGER_RECOMMEND',
+        data: {
+          currentInput: formData.value.prompt || ''
+        }
+      }
+      socket.value.send(JSON.stringify(msg))
     }
     
     socket.value.onmessage = (event) => {

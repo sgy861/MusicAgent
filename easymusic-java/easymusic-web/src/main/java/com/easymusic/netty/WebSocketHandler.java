@@ -2,6 +2,7 @@ package com.easymusic.netty;
 
 import com.easymusic.entity.po.ImMessage;
 import com.easymusic.service.ImMessageService;
+import com.easymusic.service.RecommendAgentService;
 import com.easymusic.utils.JsonUtils;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -15,10 +16,15 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<TextWebSocketF
 
     private final ChannelManager channelManager;
     private final ImMessageService imMessageService;
+    private final RecommendAgentService recommendAgentService;
+    
+    // 记录连接最后发起推荐请求的序列号，解决高并发下的乱序覆盖问题
+    private final java.util.Map<String, Long> requestSequences = new java.util.concurrent.ConcurrentHashMap<>();
 
-    public WebSocketHandler(ChannelManager channelManager, ImMessageService imMessageService) {
+    public WebSocketHandler(ChannelManager channelManager, ImMessageService imMessageService, RecommendAgentService recommendAgentService) {
         this.channelManager = channelManager;
         this.imMessageService = imMessageService;
+        this.recommendAgentService = recommendAgentService;
     }
 
     @Override
@@ -97,6 +103,14 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<TextWebSocketF
                     ctx.writeAndFlush(new TextWebSocketFrame("{\"action\":\"LEFT_ROOM\",\"receiverId\":\"" + request.getReceiverId() + "\"}"));
                     break;
 
+                case "TRIGGER_RECOMMEND":
+                    String currentInput = "";
+                    if (request.getData() != null && request.getData().getCurrentInput() != null) {
+                        currentInput = request.getData().getCurrentInput();
+                    }
+                    triggerRecommendation(ctx, userId, currentInput);
+                    break;
+
                 default:
                     sendError(ctx, "Unsupported Action: " + request.getAction());
                     break;
@@ -148,6 +162,68 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<TextWebSocketF
         ctx.writeAndFlush(new TextWebSocketFrame("{\"action\":\"ERROR\",\"content\":\"" + errMsg + "\"}"));
     }
 
+    private void triggerRecommendation(ChannelHandlerContext ctx, String userId, String currentInput) {
+        long currentSeq = requestSequences.compute(userId, (k, v) -> v == null ? 1L : v + 1);
+        io.netty.channel.Channel channel = ctx.channel();
+
+        // 关键性能优化：将耗时的向量检索(RAG)与大模型生成 offload 到公用线程池，避免直接阻塞 Netty Reactor (EventLoop) 线程
+        java.util.concurrent.ForkJoinPool.commonPool().submit(() -> {
+            try {
+                if (!channel.isActive()) {
+                    return;
+                }
+
+                recommendAgentService.generateRecommendationStream(userId, currentInput, new com.easymusic.service.RecommendationStreamCallback() {
+                    @Override
+                    public void onStart() {
+                        sendMessageSafely(channel, userId, currentSeq, "{\"type\":\"RECOMMEND_START\"}");
+                    }
+
+                    @Override
+                    public void onThink(String token) {
+                        com.alibaba.fastjson2.JSONObject msg = new com.alibaba.fastjson2.JSONObject();
+                        msg.put("type", "RECOMMEND_THINK");
+                        msg.put("content", token);
+                        sendMessageSafely(channel, userId, currentSeq, msg.toJSONString());
+                    }
+
+                    @Override
+                    public void onResult(String jsonResult) {
+                        sendMessageSafely(channel, userId, currentSeq, jsonResult);
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable) {
+                        com.alibaba.fastjson2.JSONObject msg = new com.alibaba.fastjson2.JSONObject();
+                        msg.put("type", "RECOMMEND_ERROR");
+                        msg.put("content", throwable.getMessage());
+                        sendMessageSafely(channel, userId, currentSeq, msg.toJSONString());
+                    }
+                });
+
+            } catch (Exception e) {
+                log.error("Failed to execute Netty stream recommendation for user: {}", userId, e);
+                com.alibaba.fastjson2.JSONObject msg = new com.alibaba.fastjson2.JSONObject();
+                msg.put("type", "RECOMMEND_ERROR");
+                msg.put("content", e.getMessage());
+                sendMessageSafely(channel, userId, currentSeq, msg.toJSONString());
+            }
+        });
+    }
+
+    private void sendMessageSafely(io.netty.channel.Channel channel, String userId, long seq, String message) {
+        try {
+            Long activeSeq = requestSequences.get(userId);
+            if (activeSeq != null && activeSeq == seq && channel.isActive()) {
+                channel.writeAndFlush(new TextWebSocketFrame(message));
+            } else {
+                log.debug("Discarding Netty message for user {} due to sequence mismatch or closed channel. Active seq: {}, msg seq: {}", userId, activeSeq, seq);
+            }
+        } catch (Exception e) {
+            log.error("Failed to send Netty recommendation message to user {}", userId, e);
+        }
+    }
+
     /**
      * WebSocket 请求实体定义
      */
@@ -155,6 +231,7 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<TextWebSocketF
         private String action;
         private String receiverId;
         private String content;
+        private WsRequestData data;
 
         public String getAction() {
             return action;
@@ -178,6 +255,26 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<TextWebSocketF
 
         public void setContent(String content) {
             this.content = content;
+        }
+
+        public WsRequestData getData() {
+            return data;
+        }
+
+        public void setData(WsRequestData data) {
+            this.data = data;
+        }
+    }
+
+    public static class WsRequestData {
+        private String currentInput;
+
+        public String getCurrentInput() {
+            return currentInput;
+        }
+
+        public void setCurrentInput(String currentInput) {
+            this.currentInput = currentInput;
         }
     }
 }

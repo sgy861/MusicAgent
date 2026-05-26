@@ -12,6 +12,8 @@ spring:
     listener:
       simple:
         auto-startup: false
+    publisher-confirm-type: correlated
+    publisher-returns: true
 mybatis:
   configuration:
     map-underscore-to-camel-case: true

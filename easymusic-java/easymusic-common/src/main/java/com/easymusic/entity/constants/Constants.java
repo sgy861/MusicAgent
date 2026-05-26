@@ -63,4 +63,6 @@ public class Constants {
     public static final String REDIS_KEY_ORDER_HAVE_PAY = REDIS_KEY_PREFIX + "order:havepay:";
 
     public static final String REDIS_KEY_USER_PROFILE_DIRTY = REDIS_KEY_PREFIX + "user:profile:dirty:";
+
+    public static final String REDIS_KEY_USER_QUOTA = REDIS_KEY_PREFIX + "user:quota:";
 }

@@ -280,6 +280,8 @@ public class PayOrderInfoServiceImpl implements PayOrderInfoService {
         //增加用户积分
         userIntegralRecordService.changeUserIntegral(UserIntegralRecordTypeEnum.RECHARGE, payOrderInfo.getOrderId(), payOrderInfo.getUserId(),
                 payOrderInfo.getIntegral(), payOrderInfo.getAmount());
+        // 增量同步更新 Redis 中的用户配额
+        userIntegralRecordService.rebateUserQuota(payOrderInfo.getUserId(), payOrderInfo.getIntegral());
 
         //将已支付的订单放入缓存
         redisComponent.cacheHavePayOrder(payOrderInfo.getOrderId());
@@ -357,6 +359,8 @@ public class PayOrderInfoServiceImpl implements PayOrderInfoService {
 
         userIntegralRecordService.changeUserIntegral(UserIntegralRecordTypeEnum.RECHARGE, payOrderInfo.getOrderId(), payOrderInfo.getUserId(),
                 payOrderInfo.getIntegral(), payCodeInfo.getAmount());
+        // 增量同步更新 Redis 中的用户配额
+        userIntegralRecordService.rebateUserQuota(userId, payOrderInfo.getIntegral());
     }
 
     /**
