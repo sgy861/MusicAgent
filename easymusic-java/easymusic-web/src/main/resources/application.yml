@@ -51,10 +51,9 @@ pay:
   payType: laoluo  #配置为laoluo就是走老罗封装的支付接口 使用wechat就是直接走官方（自己有商户号可以使用这种方式），
   payDomain: http://easyshop.byte361.com/api #上面payType配置为老罗那么这个域名就用我商城的域名，有微信官方商户号就配置成 https://api.mch.weixin.qq.com
   courseOrderId: 12312 #这里配置购买的easyshop的课程的订单号，在easyshop.byte361.com 个人中心 已购课程 右上角的订单号，复制过来
-#是否定时获取支付结果,音乐生成结果
+#是否定时获取支付结果
 auto:
   checkPay: true
-  checkMusic: true
 
 # Kimi (Moonshot AI) & Milvus Config
 kimi:

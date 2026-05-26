@@ -24,7 +24,6 @@ import com.easymusic.spring.SpringContext;
 import com.easymusic.utils.FileUtils;
 import com.easymusic.utils.JsonUtils;
 import com.easymusic.utils.StringTools;
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
@@ -264,16 +263,5 @@ public class MusicInfoServiceImpl implements MusicInfoService {
     @Override
     public void updateMusicCount(String musicId) {
         this.musicInfoMapper.updateMusicCount(musicId);
-    }
-
-    /**
-     * 轮训查询订单，针对无法使用回调的情况  实际开发中，会使用支回调来处理音乐生成情况
-     * 比如本地开发，或者没有线上服务器的情况 API服务没法回调到你本地的服务器上，采用轮询查询处理。
-     * 【已弃用】目前已重构为使用 RabbitMQ 延迟检查队列和死信队列进行长任务监控与超时处理。
-     */
-    @PostConstruct
-    public void getMusicFromQueue() {
-        // 已停用原 Redis 轮询逻辑，改用 RabbitMQ 延迟检查
-        log.info("Redis long task check polling is deprecated. Using RabbitMQ now.");
     }
 }

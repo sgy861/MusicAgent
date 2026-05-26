@@ -71,19 +71,6 @@ public class RedisComponent {
         redisUtils.delete(Constants.REDIS_KEY_TOKEN_WEB_USER + token);
     }
 
-    public void addMusicCreateTask(MusicTaskDTO musicTaskDto) {
-        long executeTime = System.currentTimeMillis() + 30 * 1000;
-        redisUtils.zsetAdd(Constants.REDIS_KEY_MUSIC_CREATE_QUEUE, musicTaskDto, executeTime);
-    }
-
-    public Set<MusicTaskDTO> getMusicTaskDto() {
-        return redisUtils.zsetRangeByScore(Constants.REDIS_KEY_MUSIC_CREATE_QUEUE, 0, System.currentTimeMillis());
-    }
-
-    public Long removeMusicTaskDto(MusicTaskDTO taskDto) {
-        return redisUtils.zsetAddRemove(Constants.REDIS_KEY_MUSIC_CREATE_QUEUE, taskDto);
-    }
-
     public void saveDict(String dictPcode, List<SysDict> sysDictList) {
         redisUtils.hset(Constants.REDIS_KEY_SYS_DICT, dictPcode, sysDictList);
     }

@@ -1,5 +1,7 @@
 package com.easymusic.websocket;
 
+import com.alibaba.fastjson2.JSONObject;
+import com.easymusic.service.RecommendationStreamCallback;
 import com.easymusic.utils.JsonUtils;
 import com.easymusic.service.RecommendAgentService;
 import jakarta.annotation.Resource;
@@ -24,6 +26,9 @@ public class RecommendWebSocketHandler extends TextWebSocketHandler {
 
     // Keep active sessions by userId
     private static final Map<String, WebSocketSession> SESSIONS = new ConcurrentHashMap<>();
+
+    // Keep request sequences to drop stale streaming tokens
+    private static final Map<String, Long> REQUEST_SEQUENCES = new ConcurrentHashMap<>();
 
     @Resource
     @Lazy
@@ -66,19 +71,68 @@ public class RecommendWebSocketHandler extends TextWebSocketHandler {
     }
 
     private void triggerRecommendation(String userId, String currentInput, WebSocketSession session) {
+        // Increment and get request sequence ID for this user
+        long currentSeq = REQUEST_SEQUENCES.compute(userId, (k, v) -> v == null ? 1L : v + 1);
+
         ForkJoinPool.commonPool().submit(() -> {
             try {
-                if (session.isOpen()) {
-                    String jsonResponse = recommendAgentService.generateRecommendation(userId, currentInput);
-                    if (session.isOpen()) {
-                        session.sendMessage(new TextMessage(jsonResponse));
-                        log.info("Pushed recommendation to user: {}", userId);
-                    }
+                if (!session.isOpen()) {
+                    return;
                 }
+
+                recommendAgentService.generateRecommendationStream(userId, currentInput, new RecommendationStreamCallback() {
+                    @Override
+                    public void onStart() {
+                        sendMessageSafely(session, userId, currentSeq, "{\"type\":\"RECOMMEND_START\"}");
+                    }
+
+                    @Override
+                    public void onThink(String token) {
+                        JSONObject msg = new JSONObject();
+                        msg.put("type", "RECOMMEND_THINK");
+                        msg.put("content", token);
+                        sendMessageSafely(session, userId, currentSeq, msg.toJSONString());
+                    }
+
+                    @Override
+                    public void onResult(String jsonResult) {
+                        sendMessageSafely(session, userId, currentSeq, jsonResult);
+                    }
+
+                    @Override
+                    public void onError(Throwable throwable) {
+                        JSONObject msg = new JSONObject();
+                        msg.put("type", "RECOMMEND_ERROR");
+                        msg.put("content", throwable.getMessage());
+                        sendMessageSafely(session, userId, currentSeq, msg.toJSONString());
+                    }
+                });
+
             } catch (Exception e) {
-                log.error("Failed to generate/send recommendations for user: {}", userId, e);
+                log.error("Failed to execute stream recommendation for user: {}", userId, e);
+                JSONObject msg = new JSONObject();
+                msg.put("type", "RECOMMEND_ERROR");
+                msg.put("content", e.getMessage());
+                sendMessageSafely(session, userId, currentSeq, msg.toJSONString());
             }
         });
+    }
+
+    private void sendMessageSafely(WebSocketSession session, String userId, long seq, String message) {
+        try {
+            Long activeSeq = REQUEST_SEQUENCES.get(userId);
+            if (activeSeq != null && activeSeq == seq && session.isOpen()) {
+                synchronized (session) {
+                    if (session.isOpen()) {
+                        session.sendMessage(new TextMessage(message));
+                    }
+                }
+            } else {
+                log.debug("Discarding message for user {} due to sequence mismatch or closed session. Active seq: {}, msg seq: {}", userId, activeSeq, seq);
+            }
+        } catch (Exception e) {
+            log.error("Failed to send message to user {} over websocket", userId, e);
+        }
     }
 
     @Override
@@ -86,6 +140,7 @@ public class RecommendWebSocketHandler extends TextWebSocketHandler {
         String userId = (String) session.getAttributes().get("userId");
         if (userId != null) {
             SESSIONS.remove(userId);
+            REQUEST_SEQUENCES.remove(userId);
             log.info("WebSocket connection closed for user: {}", userId);
         }
     }

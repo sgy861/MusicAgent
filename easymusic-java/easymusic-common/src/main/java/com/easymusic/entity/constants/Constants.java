@@ -56,8 +56,6 @@ public class Constants {
 
     public static final String REDIS_KEY_TOKEN_ADMIN_USER = REDIS_KEY_PREFIX + "token:admin:";
 
-    public static final String REDIS_KEY_MUSIC_CREATE_QUEUE = REDIS_KEY_PREFIX + "create:queue:";
-
     public static final String REDIS_KEY_SYS_DICT = REDIS_KEY_PREFIX + "sysdict:";
 
     public static final String REDIS_KEY_ORDER_DELAY_QUEUE = REDIS_KEY_PREFIX + "order:delay:queue:";

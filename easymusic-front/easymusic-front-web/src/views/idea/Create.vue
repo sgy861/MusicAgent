@@ -71,38 +71,49 @@
         </div>
 
         <div class="recommend-cards" v-loading="wsLoading">
-          <div 
-            v-for="(rec, index) in recommendations" 
-            :key="index" 
-            class="recommend-card"
-            @click="applyRecommendation(rec)"
-          >
-            <div class="card-glow"></div>
-            <div class="card-content">
-              <div class="card-header">
-                <span class="card-title">{{ rec.title }}</span>
-                <span class="card-arrow">→</span>
-              </div>
-              <div class="card-badges">
-                <span class="badge type">{{ rec.suggestedSettings.musicType === 1 ? '纯音乐' : '歌曲' }}</span>
-                <span class="badge genre">{{ rec.suggestedSettings.musicGener }}</span>
-                <span class="badge emotion">{{ rec.suggestedSettings.musicEmotion }}</span>
-                <span class="badge voice" v-if="rec.suggestedSettings.musicSex && rec.suggestedSettings.musicSex !== '无'">
-                  {{ rec.suggestedSettings.musicSex }}
-                </span>
-              </div>
-              <div class="card-theme" v-if="rec.lyricTheme">
-                <span class="theme-label">灵感主题:</span>
-                <span class="theme-val">{{ rec.lyricTheme }}</span>
-              </div>
-              <div class="card-tags" v-if="rec.promptTags">
-                <span v-for="tag in rec.promptTags.split(',').slice(0, 3)" :key="tag" class="tag">#{{ tag.trim() }}</span>
-              </div>
+          <!-- AI CoT thinking process -->
+          <div v-if="wsRecommending" class="recommend-thinking-panel">
+            <div class="thinking-header">
+              <span class="thinking-spinner">🔮</span>
+              <span>AI 灵感推演中 (CoT)...</span>
             </div>
+            <div class="thinking-content">{{ recommendThoughts }}</div>
           </div>
 
+          <template v-if="!wsRecommending">
+            <div 
+              v-for="(rec, index) in recommendations" 
+              :key="index" 
+              class="recommend-card"
+              @click="applyRecommendation(rec)"
+            >
+              <div class="card-glow"></div>
+              <div class="card-content">
+                <div class="card-header">
+                  <span class="card-title">{{ rec.title }}</span>
+                  <span class="card-arrow">→</span>
+                </div>
+                <div class="card-badges">
+                  <span class="badge type">{{ rec.suggestedSettings.musicType === 1 ? '纯音乐' : '歌曲' }}</span>
+                  <span class="badge genre">{{ rec.suggestedSettings.musicGener }}</span>
+                  <span class="badge emotion">{{ rec.suggestedSettings.musicEmotion }}</span>
+                  <span class="badge voice" v-if="rec.suggestedSettings.musicSex && rec.suggestedSettings.musicSex !== '无'">
+                    {{ rec.suggestedSettings.musicSex }}
+                  </span>
+                </div>
+                <div class="card-theme" v-if="rec.lyricTheme">
+                  <span class="theme-label">灵感主题:</span>
+                  <span class="theme-val">{{ rec.lyricTheme }}</span>
+                </div>
+                <div class="card-tags" v-if="rec.promptTags">
+                  <span v-for="tag in rec.promptTags.split(',').slice(0, 3)" :key="tag" class="tag">#{{ tag.trim() }}</span>
+                </div>
+              </div>
+            </div>
+          </template>
+
           <!-- Fallback/Empty State if no recommendations yet -->
-          <div v-if="recommendations.length === 0 && !wsLoading" class="empty-recommendations">
+          <div v-if="recommendations.length === 0 && !wsLoading && !wsRecommending" class="empty-recommendations">
             <div class="empty-icon">🎵</div>
             <div class="empty-text">输入您的创作想法，AI将为您推荐个性化风格</div>
           </div>
@@ -311,6 +322,8 @@ const socket = ref(null)
 const wsConnected = ref(false)
 const wsLoading = ref(false)
 const recommendations = ref([])
+const wsRecommending = ref(false)
+const recommendThoughts = ref('')
 
 const initWebSocket = () => {
   const token = localStorage.getItem('token') || 'test_token'
@@ -336,8 +349,19 @@ const initWebSocket = () => {
       wsLoading.value = false
       try {
         const res = JSON.parse(event.data)
-        if (res.type === 'RECOMMEND_RESULT') {
+        if (res.type === 'RECOMMEND_START') {
+          wsRecommending.value = true
+          recommendThoughts.value = ''
+          recommendations.value = []
+        } else if (res.type === 'RECOMMEND_THINK') {
+          wsRecommending.value = true
+          recommendThoughts.value += res.content || ''
+        } else if (res.type === 'RECOMMEND_RESULT') {
+          wsRecommending.value = false
           recommendations.value = res.recommendations || []
+        } else if (res.type === 'RECOMMEND_ERROR') {
+          wsRecommending.value = false
+          proxy.Message.error(res.content || '智能推荐失败')
         }
       } catch (e) {
         console.error('Failed to parse websocket message', e)
@@ -627,6 +651,39 @@ onUnmounted(() => {
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 12px;
     min-height: 100px;
+
+    .recommend-thinking-panel {
+      grid-column: 1 / -1;
+      background: rgba(30, 24, 60, 0.6);
+      border: 1px dashed rgba(168, 85, 247, 0.4);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 10px;
+      animation: border-glow 2s infinite alternate;
+      
+      .thinking-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #c084fc;
+        margin-bottom: 8px;
+        
+        .thinking-spinner {
+          display: inline-block;
+          animation: spin 2s infinite linear;
+        }
+      }
+      
+      .thinking-content {
+        font-size: 13px;
+        color: #e2e8f0;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        text-align: left;
+      }
+    }
     
     .recommend-card {
       position: relative;
@@ -797,6 +854,22 @@ onUnmounted(() => {
   to {
     opacity: 1;
     box-shadow: 0 0 12px #10b981;
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes border-glow {
+  from {
+    border-color: rgba(168, 85, 247, 0.3);
+    box-shadow: 0 0 5px rgba(168, 85, 247, 0.1);
+  }
+  to {
+    border-color: rgba(168, 85, 247, 0.6);
+    box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
   }
 }
 }

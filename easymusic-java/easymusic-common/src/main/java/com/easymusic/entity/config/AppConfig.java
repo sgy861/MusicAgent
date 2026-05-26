@@ -65,10 +65,6 @@ public class AppConfig {
     @Value("${auto.checkPay:false}")
     private Boolean autoCheckPay;
 
-    @Value("${auto.checkMusic:false}")
-    private Boolean autoCheckMusic;
-
-
     public String getTianpuyueApiCourseOrderId() {
         return tianpuyueApiCourseOrderId;
     }
@@ -83,10 +79,6 @@ public class AppConfig {
 
     public String getPayType() {
         return payType;
-    }
-
-    public Boolean getAutoCheckMusic() {
-        return autoCheckMusic;
     }
 
     public Boolean getAutoCheckPay() {
