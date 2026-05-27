@@ -80,7 +80,9 @@ services:
 
   # 7. Java Web 用户接口服务 (包含 Netty)
   easymusic-web:
-    build: ./easymusic-java/easymusic-web
+    build:
+      context: ./easymusic-java
+      dockerfile: easymusic-web/Dockerfile
     container_name: easymusic-web
     ports:
       - "8090:8090"
@@ -99,7 +101,9 @@ services:
 
   # 8. Java Admin 管理后台接口服务
   easymusic-admin:
-    build: ./easymusic-java/easymusic-admin
+    build:
+      context: ./easymusic-java
+      dockerfile: easymusic-admin/Dockerfile
     container_name: easymusic-admin
     ports:
       - "8091:8091"

@@ -230,7 +230,7 @@ watch(
     justify-content: center;
     border-radius: 50%;
     background: var(--btnBg);
-    box-shadow: 0 5px 15px rgba(252, 0, 255, 0.4);
+    box-shadow: var(--btnShadow);
     margin-right: 20px;
   }
   .icon-next {
@@ -249,13 +249,13 @@ watch(
     }
     :deep(.el-slider__bar) {
       height: 4px;
-      background: linear-gradient(90deg, #00dbde, #fc00ff);
+      background: linear-gradient(90deg, #48cae4, #00f5d4);
     }
     :deep(.el-slider__button-wrapper) {
       top: -16px;
     }
     :deep(.el-slider__button) {
-      background: linear-gradient(135deg, #4fdeff 0%, #e675ff 100%);
+      background: linear-gradient(135deg, #48cae4 0%, #00f5d4 100%);
       border: none;
       height: 15px;
       width: 15px;

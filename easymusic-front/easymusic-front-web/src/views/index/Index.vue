@@ -66,7 +66,7 @@ const changeCommend = (type) => {
     .title-op {
       display: flex;
       .iconfont {
-        background: #3e344f;
+        background: #16303b;
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -104,7 +104,7 @@ const changeCommend = (type) => {
       }
       &:hover {
         color: var(--active);
-        background: #3e344f;
+        background: #16303b;
         border-radius: 15px;
       }
     }

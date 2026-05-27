@@ -382,4 +382,51 @@ INSERT INTO `user_integral_record` VALUES (10039, '100000000000', -30, '2025-09-
 INSERT INTO `user_integral_record` VALUES (10040, '100000000000', 120, '2025-09-07 10:25:55', 2, '20250907102544IZ3VYWVMSPMO1B', 1.20);
 INSERT INTO `user_integral_record` VALUES (10041, '100000000000', 120, '2025-09-07 10:26:42', 2, '20250907102641THSO4XJYRPR79P', 1.20);
 
+-- ----------------------------
+-- Table structure for im_message
+-- ----------------------------
+DROP TABLE IF EXISTS `im_message`;
+CREATE TABLE `im_message`  (
+  `message_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '消息ID',
+  `sender_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '发送者ID',
+  `receiver_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '接收者ID/目标ID',
+  `msg_type` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '消息类型: CHAT / REVIEW',
+  `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '消息内容 JSON',
+  `status` tinyint(4) NOT NULL DEFAULT 0 COMMENT '状态 0:未送达/未读 1:已送达/已读',
+  `create_time` datetime NULL DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`message_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = 'IM消息表' ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Table structure for local_message
+-- ----------------------------
+DROP TABLE IF EXISTS `local_message`;
+CREATE TABLE `local_message`  (
+  `message_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '消息ID',
+  `queue_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '队列名称',
+  `exchange_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '交换机名称',
+  `routing_key` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '路由键',
+  `message_content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT '消息内容 JSON',
+  `status` tinyint(4) NOT NULL DEFAULT 0 COMMENT '状态 0:发送中 1:发送成功 2:发送失败',
+  `retry_count` int(11) NOT NULL DEFAULT 0 COMMENT '重试次数',
+  `create_time` datetime NULL DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
+  PRIMARY KEY (`message_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '本地消息表' ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Table structure for user_preference_profile
+-- ----------------------------
+DROP TABLE IF EXISTS `user_preference_profile`;
+CREATE TABLE `user_preference_profile` (
+  `user_id` varchar(50) NOT NULL COMMENT '用户ID',
+  `preference_text` text COMMENT '用户偏好描述',
+  `preference_vector` blob COMMENT '用户偏好向量',
+  `last_behavior_time` datetime DEFAULT NULL COMMENT '最后动作时间',
+  `update_time` datetime NOT NULL COMMENT '更新时间',
+  PRIMARY KEY (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户偏好画像表';
+
 SET FOREIGN_KEY_CHECKS = 1;
+

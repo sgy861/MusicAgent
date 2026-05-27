@@ -25,9 +25,9 @@ const route = useRoute()
   display: flex;
   .create-panel {
     width: 600px;
-    background: #0e0123;
+    background: #091e25;
     padding: 10px;
-    border-right: 1px solid #271b39;
+    border-right: 1px solid rgba(0, 245, 212, 0.15);
   }
   .music-panel {
     flex: 1;

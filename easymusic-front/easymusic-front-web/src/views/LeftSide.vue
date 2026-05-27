@@ -140,7 +140,7 @@ const showIntegralRecord = () => {
   height: 100%;
   color: #fff;
   overflow: hidden;
-  background: linear-gradient(180deg, #0000, #94adff1a);
+  background: linear-gradient(180deg, #0000, rgba(0, 245, 212, 0.1));
   .bg {
     position: fixed;
     top: 0;

@@ -1,4 +1,4 @@
-@forward 'element-plus/theme-chalk/src/common/var.scss' with ($colors: ('primary': ('base': #5540A0,
+@forward 'element-plus/theme-chalk/src/common/var.scss' with ($colors: ('primary': ('base': #028090,
         ),
     ));
 @use "element-plus/theme-chalk/src/index.scss" as *;
@@ -9,26 +9,26 @@
 }
 
 ::-webkit-scrollbar-track {
-    background: #0E0123;
+    background: #07171e;
     border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #94adff;
+    background: #00b4d8;
     border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #94adff;
+    background: #00f5d4;
 }
 
 :root {
     --text: #ffffff80;
     --HiText: #fff;
-    --activeText: #94adff;
-    --purple: #AD44F4;
-    --btnBg: linear-gradient(135deg, #00dbde, #fc00ff);
-    --btnShadow: 0 5px 15px rgba(252, 0, 255, 0.4);
+    --activeText: #00f5d4;
+    --purple: #00b4d8;
+    --btnBg: linear-gradient(135deg, #00b4d8, #00f5d4);
+    --btnShadow: 0 5px 15px rgba(0, 245, 212, 0.4);
 }
 
 //去除下拉菜单 黑边
@@ -37,7 +37,7 @@
 }
 
 body {
-    background: #0e0123;
+    background: linear-gradient(135deg, #091e25 0%, #0d2a32 50%, #06161c 100%);
 }
 
 * {
@@ -95,7 +95,7 @@ body {
 .volume-popover {
     min-width: 0px !important;
     padding: 20px 0px !important;
-    background: #3e344f !important;
+    background: #16303b !important;
     border: none !important;
 
     .el-slider.is-vertical .el-slider__runway {
@@ -111,14 +111,14 @@ body {
     }
 
     .el-slider__button {
-        background: #95AEFC;
+        background: #00f5d4;
         border: none;
         height: 10px;
         width: 10px;
     }
 
     .el-slider__bar {
-        background: #95AEFC;
+        background: #00f5d4;
     }
 }
 
@@ -142,7 +142,7 @@ body {
 .user-info-popper {
     padding: 0px !important;
     border: none !important;
-    background: #3E3450 !important;
+    background: #16303b !important;
     border-radius: 5px;
     overflow: hidden;
 
@@ -152,7 +152,7 @@ body {
         cursor: pointer;
 
         &:hover {
-            background: #524962;
+            background: #224956;
         }
     }
 }

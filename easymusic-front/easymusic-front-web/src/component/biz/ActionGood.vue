@@ -78,7 +78,7 @@ watch(
   backdrop-filter: blur(12px);
   border-radius: 50%;
   &:hover {
-    background: #3e3450;
+    background: #16303b;
   }
 }
 .icon-good-solid {

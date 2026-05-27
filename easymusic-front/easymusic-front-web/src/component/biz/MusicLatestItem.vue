@@ -74,7 +74,7 @@ const playList = () => {
   min-width: 320px;
   height: 100px;
   .cover {
-    background: #302748;
+    background: #16303b;
     border-radius: 10px;
     width: 100px;
     height: 100px;
@@ -105,7 +105,7 @@ const playList = () => {
       white-space: nowrap;
       cursor: pointer;
       &:hover {
-        color: #95aefc;
+        color: var(--activeText);
       }
     }
     .music-prompt {

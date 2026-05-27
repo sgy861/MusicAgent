@@ -146,7 +146,7 @@ const playList = () => {
       text-overflow: ellipsis;
       white-space: nowrap;
       &:hover {
-        color: #95aefc;
+        color: var(--activeText);
       }
     }
     .music-prompt {

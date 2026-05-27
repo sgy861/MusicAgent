@@ -44,14 +44,14 @@ const changeModel = (item) => {
 .switch-panel {
   display: flex;
   align-items: center;
-  background: #271b39;
+  background: #16303b;
   border-radius: 25px;
   margin: 10px 0px;
   width: 250px;
   line-height: 35px;
   cursor: pointer;
   &:hover {
-    background: #3e344f;
+    background: #224956;
   }
   .switch-item {
     width: 50%;
@@ -61,7 +61,7 @@ const changeModel = (item) => {
   }
   .switch-item-active {
     background: #fff;
-    color: #271b39;
+    color: #16303b;
     border-radius: 25px;
   }
 }

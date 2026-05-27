@@ -85,7 +85,7 @@ const reloadMusic = () => {
   display: flex;
   align-items: center;
   width: 100%;
-  background: #0e0123;
+  background: #091e25;
   .icon-refresh {
     color: #fff;
     margin-left: 20px;

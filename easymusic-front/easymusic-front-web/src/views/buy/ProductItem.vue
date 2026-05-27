@@ -40,7 +40,7 @@ const buy = () => {
 
 <style lang="scss" scoped>
 .product-item {
-  background: #241f47;
+  background: #102630;
   width: 300px;
   height: 500px;
   margin-right: 20px;
@@ -56,7 +56,7 @@ const buy = () => {
     padding: 20px;
     .product-name {
       font-size: 22px;
-      background: linear-gradient(104deg, #f6b1ff, #ecd3ff 53%, #ea8cff);
+      background: linear-gradient(104deg, #48cae4, #00f5d4);
       background-clip: text;
       -webkit-text-fill-color: transparent;
       font-weight: bold;
@@ -65,12 +65,12 @@ const buy = () => {
     .price {
       font-size: 20px;
       font-weight: 500;
-      color: #94adff;
+      color: #00f5d4;
     }
     .integral {
       line-height: 48px;
       font-weight: 700;
-      background: linear-gradient(105deg, #4fdeff, #e675ff);
+      background: linear-gradient(105deg, #48cae4, #00f5d4);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -94,7 +94,7 @@ const buy = () => {
     cursor: pointer;
   }
   &:hover {
-    background: linear-gradient(163.52deg, #4940a9 4.84%, #161518 47.07%);
+    background: linear-gradient(163.52deg, #134074 4.84%, #081c24 47.07%);
     outline: 2px solid var(--activeText);
   }
 }

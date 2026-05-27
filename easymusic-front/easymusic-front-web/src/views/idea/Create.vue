@@ -65,9 +65,21 @@
             <span>AI 智能灵感推荐</span>
             <span class="status-dot" :class="{ connected: wsConnected }"></span>
           </div>
-          <div class="recommend-tips" v-if="wsConnected">基于您的点赞喜好实时计算</div>
-          <div class="recommend-tips reconnecting" v-else-if="wsLoading">连接中...</div>
-          <div class="recommend-tips disconnected" v-else @click="initWebSocket">连接已断开，点击重连</div>
+          <div class="recommend-actions" style="display: flex; align-items: center; gap: 12px;">
+            <div class="recommend-tips" v-if="wsConnected">基于您的点赞喜好实时计算</div>
+            <div class="recommend-tips reconnecting" v-else-if="wsLoading">连接中...</div>
+            <div class="recommend-tips disconnected" v-else @click="initWebSocket">连接已断开，点击重连</div>
+            <el-button 
+              type="primary" 
+              size="small" 
+              :disabled="!wsConnected || wsRecommending" 
+              @click="triggerRecommendation"
+              round
+              style="background: var(--purple); border-color: var(--purple); color: #fff;"
+            >
+              ✨ 获取灵感推荐
+            </el-button>
+          </div>
         </div>
 
         <div class="recommend-cards" v-loading="wsLoading">
@@ -318,87 +330,12 @@ const getCreation = async () => {
 }
 
 // --- AI Recommendation WebSocket Integration ---
-const socket = ref(null)
-const wsConnected = ref(false)
+import { getWsConnected, sendWsMessage } from '@/utils/socket.js'
+const wsConnected = computed(() => getWsConnected().value)
 const wsLoading = ref(false)
 const recommendations = ref([])
 const wsRecommending = ref(false)
 const recommendThoughts = ref('')
-
-const initWebSocket = () => {
-  const token = localStorage.getItem('token') || 'test_token'
-  if (!token) return
-
-  if (socket.value) {
-    socket.value.close()
-  }
-
-  wsLoading.value = true
-  let wsUrl = `ws://localhost:8099/ws?token=${token}`
-  if (process.env.NODE_ENV === 'production') {
-    wsUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws?token=${token}`
-  }
-  
-  try {
-    socket.value = new WebSocket(wsUrl)
-    
-    socket.value.onopen = () => {
-      wsConnected.value = true
-      wsLoading.value = false
-      console.log('WebSocket connected')
-      // 握手成功后，立即主动发送首次推荐请求
-      const msg = {
-        action: 'TRIGGER_RECOMMEND',
-        data: {
-          currentInput: formData.value.prompt || ''
-        }
-      }
-      socket.value.send(JSON.stringify(msg))
-    }
-    
-    socket.value.onmessage = (event) => {
-      wsLoading.value = false
-      try {
-        const res = JSON.parse(event.data)
-        if (res.type === 'RECOMMEND_START') {
-          wsRecommending.value = true
-          recommendThoughts.value = ''
-          recommendations.value = []
-        } else if (res.type === 'RECOMMEND_THINK') {
-          wsRecommending.value = true
-          recommendThoughts.value += res.content || ''
-        } else if (res.type === 'RECOMMEND_RESULT') {
-          wsRecommending.value = false
-          recommendations.value = res.recommendations || []
-        } else if (res.type === 'RECOMMEND_ERROR') {
-          wsRecommending.value = false
-          proxy.Message.error(res.content || '智能推荐失败')
-        }
-      } catch (e) {
-        console.error('Failed to parse websocket message', e)
-      }
-    }
-    
-    socket.value.onerror = (err) => {
-      console.error('WebSocket error', err)
-      wsLoading.value = false
-    }
-    
-    socket.value.onclose = () => {
-      wsConnected.value = false
-      console.log('WebSocket connection closed')
-      // Try to reconnect after 5 seconds if token exists
-      setTimeout(() => {
-        if (localStorage.getItem('token') || token === 'test_token') {
-          initWebSocket()
-        }
-      }, 5000)
-    }
-  } catch (error) {
-    console.error('WebSocket connection initialization failed', error)
-    wsLoading.value = false
-  }
-}
 
 const applyRecommendation = (rec) => {
   formData.value.modeType = 1 // 自动切换为高级模式以显示所有配置
@@ -417,39 +354,52 @@ const applyRecommendation = (rec) => {
   proxy.Message.success(`已应用风格：${rec.title}`)
 }
 
-let debounceTimer = null
-const handlePromptInput = () => {
-  if (!wsConnected.value || !socket.value) return
-  
-  if (debounceTimer) {
-    clearTimeout(debounceTimer)
+const triggerRecommendation = () => {
+  if (!wsConnected.value) {
+    proxy.Message.warning('服务未连接，请登录并稍候')
+    return
   }
-  
-  debounceTimer = setTimeout(() => {
-    const msg = {
-      action: 'TRIGGER_RECOMMEND',
-      data: {
-        currentInput: formData.value.prompt
-      }
+  if (!formData.value.prompt || !formData.value.prompt.trim()) {
+    proxy.Message.warning('请先输入您的创作想法（如：“一首轻快的夏日民谣”）')
+    return
+  }
+  wsRecommending.value = true
+  recommendThoughts.value = ''
+  recommendations.value = []
+  const msg = {
+    action: 'TRIGGER_RECOMMEND',
+    data: {
+      currentInput: formData.value.prompt
     }
-    socket.value.send(JSON.stringify(msg))
-  }, 1000)
+  }
+  sendWsMessage(msg)
 }
 
-watch(() => formData.value.prompt, (newVal) => {
-  handlePromptInput()
-})
+const handleWsMessage = (res) => {
+  if (res.type === 'RECOMMEND_START') {
+    wsRecommending.value = true
+    recommendThoughts.value = ''
+    recommendations.value = []
+  } else if (res.type === 'RECOMMEND_THINK') {
+    wsRecommending.value = true
+    recommendThoughts.value += res.content || ''
+  } else if (res.type === 'RECOMMEND_RESULT') {
+    wsRecommending.value = false
+    recommendations.value = res.recommendations || []
+  } else if (res.type === 'RECOMMEND_ERROR') {
+    wsRecommending.value = false
+    proxy.Message.error(res.content || '智能推荐失败')
+  }
+}
 
 onMounted(() => {
   loadSysSetting()
   getCreation()
-  initWebSocket()
+  mitter.on('wsMessage', handleWsMessage)
 })
 
 onUnmounted(() => {
-  if (socket.value) {
-    socket.value.close()
-  }
+  mitter.off('wsMessage', handleWsMessage)
 })
 </script>
 
@@ -478,11 +428,11 @@ onUnmounted(() => {
 .create-form {
   color: #fff;
   .input-panel {
-    background: #29244e;
+    background: #16303b;
     border-radius: 5px;
     overflow: hidden;
     :deep(.el-textarea__inner) {
-      background: #29244e;
+      background: #16303b;
       box-shadow: none;
       height: 100%;
       border-radius: 0px;
@@ -504,7 +454,7 @@ onUnmounted(() => {
       .icon-magic {
         border-radius: 5px;
         padding: 5px 10px;
-        background: #3f3a60;
+        background: #224956;
         font-size: 13px;
         &::before {
           margin-right: 5px;
@@ -518,7 +468,7 @@ onUnmounted(() => {
     display: flex;
     .lyric-panel {
       width: 300px;
-      background: #29244d;
+      background: #16303b;
       border-radius: 5px;
       overflow: hidden;
       height: 100%;
@@ -602,8 +552,8 @@ onUnmounted(() => {
 .ai-recommendation-section {
   margin: 20px 0;
   padding: 15px;
-  background: rgba(41, 36, 78, 0.4);
-  border: 1px solid rgba(138, 92, 246, 0.2);
+  background: rgba(22, 48, 59, 0.4);
+  border: 1px solid rgba(0, 245, 212, 0.2);
   border-radius: 12px;
   backdrop-filter: blur(8px);
   
@@ -620,7 +570,7 @@ onUnmounted(() => {
       font-size: 16px;
       font-weight: 600;
       color: #fff;
-      text-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+      text-shadow: 0 0 10px rgba(0, 245, 212, 0.5);
       
       .sparkle-icon {
         animation: pulse-glow 2s infinite ease-in-out;
@@ -644,7 +594,7 @@ onUnmounted(() => {
     
     .recommend-tips {
       font-size: 12px;
-      color: #a78bfa;
+      color: #48cae4;
       cursor: pointer;
       
       &.reconnecting {
@@ -665,8 +615,8 @@ onUnmounted(() => {
 
     .recommend-thinking-panel {
       grid-column: 1 / -1;
-      background: rgba(30, 24, 60, 0.6);
-      border: 1px dashed rgba(168, 85, 247, 0.4);
+      background: rgba(11, 30, 37, 0.6);
+      border: 1px dashed rgba(0, 245, 212, 0.4);
       border-radius: 8px;
       padding: 15px;
       margin-bottom: 10px;
@@ -678,7 +628,7 @@ onUnmounted(() => {
         gap: 8px;
         font-size: 14px;
         font-weight: 600;
-        color: #c084fc;
+        color: #00f5d4;
         margin-bottom: 8px;
         
         .thinking-spinner {
@@ -698,7 +648,7 @@ onUnmounted(() => {
     
     .recommend-card {
       position: relative;
-      background: rgba(30, 24, 60, 0.8);
+      background: rgba(16, 38, 47, 0.8);
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 10px;
       padding: 12px;
@@ -712,7 +662,7 @@ onUnmounted(() => {
         left: 0;
         width: 100%;
         height: 100%;
-        background: linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%);
+        background: linear-gradient(135deg, rgba(0, 245, 212, 0.15) 0%, rgba(0, 180, 216, 0.15) 100%);
         opacity: 0;
         transition: opacity 0.3s ease;
         z-index: 1;
@@ -725,8 +675,8 @@ onUnmounted(() => {
       
       &:hover {
         transform: translateY(-4px);
-        border-color: rgba(168, 85, 247, 0.4);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 15px rgba(168, 85, 247, 0.2);
+        border-color: rgba(0, 245, 212, 0.4);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 15px rgba(0, 245, 212, 0.2);
         
         .card-glow {
           opacity: 1;
@@ -734,7 +684,7 @@ onUnmounted(() => {
         
         .card-arrow {
           transform: translateX(3px);
-          color: #a855f7;
+          color: #00f5d4;
         }
       }
       
@@ -770,19 +720,19 @@ onUnmounted(() => {
           font-weight: 500;
           
           &.type {
-            background: rgba(168, 85, 247, 0.2);
-            color: #d8b4fe;
-            border: 1px solid rgba(168, 85, 247, 0.3);
+            background: rgba(0, 180, 216, 0.2);
+            color: #90e0ef;
+            border: 1px solid rgba(0, 180, 216, 0.3);
           }
           &.genre {
-            background: rgba(99, 102, 241, 0.2);
-            color: #c7d2fe;
-            border: 1px solid rgba(99, 102, 241, 0.3);
+            background: rgba(0, 150, 199, 0.2);
+            color: #caf0f8;
+            border: 1px solid rgba(0, 150, 199, 0.3);
           }
           &.emotion {
-            background: rgba(236, 72, 153, 0.2);
-            color: #fbcfe8;
-            border: 1px solid rgba(236, 72, 153, 0.3);
+            background: rgba(0, 245, 212, 0.2);
+            color: #ccfff5;
+            border: 1px solid rgba(0, 245, 212, 0.3);
           }
           &.voice {
             background: rgba(20, 184, 166, 0.2);
@@ -814,7 +764,7 @@ onUnmounted(() => {
         
         .tag {
           font-size: 10px;
-          color: #a78bfa;
+          color: #48cae4;
           background: rgba(0, 0, 0, 0.2);
           padding: 1px 4px;
           border-radius: 3px;
@@ -853,7 +803,7 @@ onUnmounted(() => {
   50% {
     transform: scale(1.1);
     opacity: 1;
-    filter: drop-shadow(0 0 5px rgba(168, 85, 247, 0.8));
+    filter: drop-shadow(0 0 5px rgba(0, 245, 212, 0.8));
   }
 }
 
@@ -875,13 +825,12 @@ onUnmounted(() => {
 
 @keyframes border-glow {
   from {
-    border-color: rgba(168, 85, 247, 0.3);
-    box-shadow: 0 0 5px rgba(168, 85, 247, 0.1);
+    border-color: rgba(0, 245, 212, 0.3);
+    box-shadow: 0 0 5px rgba(0, 245, 212, 0.1);
   }
   to {
-    border-color: rgba(168, 85, 247, 0.6);
-    box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
+    border-color: rgba(0, 245, 212, 0.6);
+    box-shadow: 0 0 15px rgba(0, 245, 212, 0.3);
   }
-}
 }
 </style>

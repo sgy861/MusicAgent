@@ -44,7 +44,7 @@ const playMusic = () => {
   z-index: 500;
   position: fixed;
   bottom: 0px;
-  background: #1a142d;
+  background: #102630;
   height: 70px;
   width: calc(100% - 200px);
   color: #fff;

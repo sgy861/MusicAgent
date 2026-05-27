@@ -78,7 +78,7 @@ const open = () => {
 .cust-dialog {
   padding: 0px !important;
   margin-bottom: 5px !important;
-  background: linear-gradient(130deg, #1a3c8d, #695bc5 47%, #3a1b6f);
+  background: linear-gradient(130deg, #0f3042, #144458 47%, #028090);
   border-radius: 8px;
   .el-dialog__header {
     padding: 5px 0px 5px 10px;
