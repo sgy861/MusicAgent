@@ -293,6 +293,7 @@ public class MilvusServiceImpl implements MilvusService {
                     .withOutFields(Arrays.asList("creation_id", "user_id", "prompt", "settings"))
                     .withTopK(topK)
                     .withVectors(Collections.singletonList(vectorList))
+                    .withVectorFieldName("vector")
                     .withParams("{\"nprobe\":10}")
                     .build();
 
