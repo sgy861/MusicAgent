@@ -47,7 +47,7 @@ graph TD
         WebAPI[easymusic-web: 业务接口]
         AdminAPI[easymusic-admin: 后台管理]
         ReActEngine[ReAct 智能推理引擎]
-        AgentToolRegistry[工具路由注册表 (越权强拦)]
+        AgentToolRegistry["工具路由注册表 (越权强拦)"]
     end
 
     %% 异步解耦与中间件
