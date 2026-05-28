@@ -60,7 +60,7 @@ auto:
 # Kimi (Moonshot AI) & Milvus Config
 kimi:
   api:
-    key: sk-CNmSLOZOPUjTiFgyyO7h4C7VuepTEyhJTGxUmyQiguqC5rpU
+    key: ${KIMI_API_KEY:sk-placeholder-replace-me}
     url: https://api.moonshot.cn/v1
     model: moonshot-v1-8k
 milvus:

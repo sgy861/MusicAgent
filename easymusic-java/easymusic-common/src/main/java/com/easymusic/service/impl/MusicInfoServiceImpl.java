@@ -13,6 +13,11 @@ import com.easymusic.entity.query.MusicInfoQuery;
 import com.easymusic.entity.query.SimplePage;
 import com.easymusic.entity.query.UserInfoQuery;
 import com.easymusic.entity.query.UserIntegralRecordQuery;
+import com.easymusic.entity.po.MusicCreation;
+import com.easymusic.entity.po.SysDict;
+import com.easymusic.entity.query.MusicCreationQuery;
+import com.easymusic.mappers.MusicCreationMapper;
+import java.util.Optional;
 import com.easymusic.entity.vo.PaginationResultVO;
 import com.easymusic.exception.BusinessException;
 import com.easymusic.mappers.MusicInfoMapper;
@@ -31,6 +36,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
@@ -64,6 +70,9 @@ public class MusicInfoServiceImpl implements MusicInfoService {
 
     @Resource
     private UserIntegralRecordService userIntegralRecordService;
+
+    @Resource
+    private MusicCreationMapper<MusicCreation, MusicCreationQuery> musicCreationMapper;
 
     /**
      * 根据条件查询列表
@@ -212,27 +221,127 @@ public class MusicInfoServiceImpl implements MusicInfoService {
             updateInfo.setAudioPath(audioPath);
         } else {
             updateInfo.setMusicStatus(MusicStatusEnum.CRAETE_FAIL.getStatus());
-            //退还用户积分
-            MusicInfo musicInfo = this.musicInfoMapper.selectByTaskId(resultDTO.getTaskId());
-            if (musicInfo == null) {
-                throw new BusinessException("音乐不存在");
-            }
-            UserIntegralRecordQuery recordQuery = new UserIntegralRecordQuery();
-            recordQuery.setUserId(musicInfo.getUserId());
-            recordQuery.setBusinessId(musicInfo.getCreationId());
-            List<UserIntegralRecord> list = this.userIntegralRecordService.findListByParam(recordQuery);
-            UserIntegralRecord record = list.get(0);
-            userIntegralRecordService.changeUserIntegral(UserIntegralRecordTypeEnum.CREATE_MUSIC_BACK, musicInfo.getCreationId(), musicInfo.getUserId(),
-                    -record.getChangeIntegral(), null);
-            // 自动回补 Redis 内存中的用户配额
-            userIntegralRecordService.rebateUserQuota(musicInfo.getUserId(), -record.getChangeIntegral());
         }
+
         MusicInfoQuery musicInfoQuery = new MusicInfoQuery();
         musicInfoQuery.setTaskId(resultDTO.getTaskId());
         musicInfoQuery.setMusicStatus(MusicStatusEnum.CREATING.getStatus());
+
+        MusicInfo musicInfo = this.musicInfoMapper.selectByTaskId(resultDTO.getTaskId());
+        if (musicInfo == null) {
+            throw new BusinessException("音乐不存在");
+        }
+
         Integer changeCount = this.musicInfoMapper.updateByParam(updateInfo, musicInfoQuery);
         if (changeCount == 0) {
             throw new BusinessException("更新音乐状态失败");
+        }
+
+        // --- State Machine & Quota Confirm/Cancel ---
+        MusicCreation musicCreation = this.musicCreationMapper.selectByCreationId(musicInfo.getCreationId());
+        if (musicCreation != null) {
+            MusicTypeEnum musicTypeEnum = MusicTypeEnum.getByType(musicCreation.getMusicType());
+            List<SysDict> sysDictSubList = redisComponent.getDictSubList(musicTypeEnum.getDictCode());
+            Optional<SysDict> dictInfo = sysDictSubList.stream()
+                    .filter(value -> value.getDictCode().equals(musicCreation.getModel()))
+                    .findFirst();
+            int integral = 0;
+            if (dictInfo.isPresent()) {
+                integral = Integer.parseInt(dictInfo.get().getDictValue());
+            }
+
+            // Check if this creation task is not finalized yet
+            if (AiTaskStatusEnum.AI_SUBMITTED.getStatus().equals(musicCreation.getTaskStatus()) 
+                    || AiTaskStatusEnum.AI_PROCESSING.getStatus().equals(musicCreation.getTaskStatus())
+                    || AiTaskStatusEnum.QUOTA_FROZEN.getStatus().equals(musicCreation.getTaskStatus())) {
+                
+                if (resultDTO.getCreateSuccess()) {
+                    // Update state to COMPLETED using conditional update (optimistic lock)
+                    MusicCreation updateCreation = new MusicCreation();
+                    updateCreation.setTaskStatus(AiTaskStatusEnum.COMPLETED.getStatus());
+                    updateCreation.setUpdateTime(new Date());
+                    
+                    MusicCreationQuery query = new MusicCreationQuery();
+                    query.setCreationId(musicCreation.getCreationId());
+                    query.setTaskStatus(musicCreation.getTaskStatus()); // Must match current status
+                    
+                    Integer rows = musicCreationMapper.updateByParam(updateCreation, query);
+                    if (rows > 0) {
+                        // Success: Confirm freeze and deduct database points!
+                        userIntegralRecordService.confirmFreeze(musicCreation.getCreationId(), musicCreation.getUserId(), integral);
+                        userIntegralRecordService.changeUserIntegral(UserIntegralRecordTypeEnum.CREATE_MUSIC, 
+                                musicCreation.getCreationId(), musicCreation.getUserId(), -integral, null);
+                        log.info("[FSM] MusicCreation {} succeeded. Confirmed freeze of {} points.", 
+                                musicCreation.getCreationId(), integral);
+                    } else {
+                        log.warn("[FSM] MusicCreation {} status was already finalized by another thread, skipping confirm.", 
+                                musicCreation.getCreationId());
+                    }
+                } else {
+                    // Failure of this task. Check if all tasks under this creation failed.
+                    MusicInfoQuery query = new MusicInfoQuery();
+                    query.setCreationId(musicCreation.getCreationId());
+                    List<MusicInfo> siblingMusicInfos = this.musicInfoMapper.selectList(query);
+                    
+                    boolean allFailed = true;
+                    boolean anySucceeded = false;
+                    for (MusicInfo info : siblingMusicInfos) {
+                        if (MusicStatusEnum.CREATING.getStatus().equals(info.getMusicStatus())) {
+                            allFailed = false; // still running
+                        } else if (MusicStatusEnum.CREATED.getStatus().equals(info.getMusicStatus())) {
+                            anySucceeded = true;
+                        }
+                    }
+                    
+                    if (allFailed && !anySucceeded) {
+                        // All sibling tasks failed! Cancel the freeze and refund points (no DB deduct happened).
+                        // Conditional update to FAILED
+                        MusicCreation updateCreation = new MusicCreation();
+                        updateCreation.setTaskStatus(AiTaskStatusEnum.FAILED.getStatus());
+                        updateCreation.setUpdateTime(new Date());
+                        
+                        MusicCreationQuery mcQuery = new MusicCreationQuery();
+                        mcQuery.setCreationId(musicCreation.getCreationId());
+                        mcQuery.setTaskStatus(musicCreation.getTaskStatus());
+                        
+                        Integer rows = musicCreationMapper.updateByParam(updateCreation, mcQuery);
+                        if (rows > 0) {
+                            userIntegralRecordService.cancelFreeze(musicCreation.getCreationId(), musicCreation.getUserId(), integral);
+                            log.info("[FSM] MusicCreation {} completely failed. Cancelled freeze of {} points.", 
+                                    musicCreation.getCreationId(), integral);
+                        } else {
+                            log.warn("[FSM] MusicCreation {} status was already finalized, skipping cancel.", 
+                                    musicCreation.getCreationId());
+                        }
+                    } else if (anySucceeded) {
+                        // Some succeeded, but this task failed. Update state to COMPLETED conditionally.
+                        MusicCreation updateCreation = new MusicCreation();
+                        updateCreation.setTaskStatus(AiTaskStatusEnum.COMPLETED.getStatus());
+                        updateCreation.setUpdateTime(new Date());
+                        
+                        MusicCreationQuery mcQuery = new MusicCreationQuery();
+                        mcQuery.setCreationId(musicCreation.getCreationId());
+                        mcQuery.setTaskStatus(musicCreation.getTaskStatus());
+                        
+                        musicCreationMapper.updateByParam(updateCreation, mcQuery);
+                        log.info("[FSM] MusicCreation {} task failed but at least one task succeeded. State -> COMPLETED.", 
+                                musicCreation.getCreationId());
+                    } else {
+                        // Still has other tasks in progress. Update status to AI_PROCESSING conditionally.
+                        MusicCreation updateCreation = new MusicCreation();
+                        updateCreation.setTaskStatus(AiTaskStatusEnum.AI_PROCESSING.getStatus());
+                        updateCreation.setUpdateTime(new Date());
+                        
+                        MusicCreationQuery mcQuery = new MusicCreationQuery();
+                        mcQuery.setCreationId(musicCreation.getCreationId());
+                        mcQuery.setTaskStatus(musicCreation.getTaskStatus());
+                        
+                        musicCreationMapper.updateByParam(updateCreation, mcQuery);
+                        log.info("[FSM] MusicCreation {} task failed, but other tasks are still running. State -> AI_PROCESSING.", 
+                                musicCreation.getCreationId());
+                    }
+                }
+            }
         }
     }
 

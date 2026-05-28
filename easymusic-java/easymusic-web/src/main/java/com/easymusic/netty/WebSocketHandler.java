@@ -4,6 +4,7 @@ import com.easymusic.entity.po.ImMessage;
 import com.easymusic.service.ImMessageService;
 import com.easymusic.service.RecommendAgentService;
 import com.easymusic.utils.JsonUtils;
+import com.easymusic.spring.SpringContext;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
@@ -166,49 +167,33 @@ public class WebSocketHandler extends SimpleChannelInboundHandler<TextWebSocketF
         long currentSeq = requestSequences.compute(userId, (k, v) -> v == null ? 1L : v + 1);
         io.netty.channel.Channel channel = ctx.channel();
 
-        // 关键性能优化：将耗时的向量检索(RAG)与大模型生成 offload 到公用线程池，避免直接阻塞 Netty Reactor (EventLoop) 线程
-        java.util.concurrent.ForkJoinPool.commonPool().submit(() -> {
-            try {
-                if (!channel.isActive()) {
-                    return;
-                }
+        // 绑定最新的请求序列号到 Channel 属性中，供回传时做幂等/时效性校验
+        channel.attr(ChannelManager.ACTIVE_SEQ_KEY).set(currentSeq);
 
-                recommendAgentService.generateRecommendationStream(userId, currentInput, new com.easymusic.service.RecommendationStreamCallback() {
-                    @Override
-                    public void onStart() {
-                        sendMessageSafely(channel, userId, currentSeq, "{\"type\":\"RECOMMEND_START\"}");
-                    }
+        try {
+            org.springframework.amqp.rabbit.core.RabbitTemplate rabbitTemplate =
+                    (org.springframework.amqp.rabbit.core.RabbitTemplate) SpringContext.getBean("rabbitTemplate");
 
-                    @Override
-                    public void onThink(String token) {
-                        com.alibaba.fastjson2.JSONObject msg = new com.alibaba.fastjson2.JSONObject();
-                        msg.put("type", "RECOMMEND_THINK");
-                        msg.put("content", token);
-                        sendMessageSafely(channel, userId, currentSeq, msg.toJSONString());
-                    }
+            com.easymusic.entity.dto.AiRecommendTaskDTO taskDto = new com.easymusic.entity.dto.AiRecommendTaskDTO();
+            taskDto.setUserId(userId);
+            taskDto.setCurrentInput(currentInput);
+            taskDto.setNodeAddress(channelManager.getNodeAddress());
+            taskDto.setRequestSeq(currentSeq);
 
-                    @Override
-                    public void onResult(String jsonResult) {
-                        sendMessageSafely(channel, userId, currentSeq, jsonResult);
-                    }
+            // 异步投递推荐任务到 MQ
+            rabbitTemplate.convertAndSend(
+                    com.easymusic.config.RabbitConfig.AI_RECOMMEND_TASK_QUEUE,
+                    com.easymusic.utils.JsonUtils.convertObj2Json(taskDto)
+            );
+            log.info("[WebSocketHandler] Dispatched AI recommendation task to MQ for user {} (seq: {})", userId, currentSeq);
 
-                    @Override
-                    public void onError(Throwable throwable) {
-                        com.alibaba.fastjson2.JSONObject msg = new com.alibaba.fastjson2.JSONObject();
-                        msg.put("type", "RECOMMEND_ERROR");
-                        msg.put("content", throwable.getMessage());
-                        sendMessageSafely(channel, userId, currentSeq, msg.toJSONString());
-                    }
-                });
-
-            } catch (Exception e) {
-                log.error("Failed to execute Netty stream recommendation for user: {}", userId, e);
-                com.alibaba.fastjson2.JSONObject msg = new com.alibaba.fastjson2.JSONObject();
-                msg.put("type", "RECOMMEND_ERROR");
-                msg.put("content", e.getMessage());
-                sendMessageSafely(channel, userId, currentSeq, msg.toJSONString());
-            }
-        });
+        } catch (Exception e) {
+            log.error("[WebSocketHandler] Failed to dispatch AI recommendation task to MQ for user {}", userId, e);
+            com.alibaba.fastjson2.JSONObject msg = new com.alibaba.fastjson2.JSONObject();
+            msg.put("type", "RECOMMEND_ERROR");
+            msg.put("content", "Dispatched recommendation failed: " + e.getMessage());
+            ctx.writeAndFlush(new TextWebSocketFrame(msg.toJSONString()));
+        }
     }
 
     private void sendMessageSafely(io.netty.channel.Channel channel, String userId, long seq, String message) {

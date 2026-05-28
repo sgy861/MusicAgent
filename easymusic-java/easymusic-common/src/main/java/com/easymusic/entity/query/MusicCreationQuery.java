@@ -206,4 +206,43 @@ public class MusicCreationQuery extends BaseParam {
 		return this.createTimeEnd;
 	}
 
+	private Integer taskStatus;
+
+	private String updateTime;
+
+	private String updateTimeStart;
+
+	private String updateTimeEnd;
+
+	public void setTaskStatus(Integer taskStatus){
+		this.taskStatus = taskStatus;
+	}
+
+	public Integer getTaskStatus(){
+		return this.taskStatus;
+	}
+
+	public void setUpdateTime(String updateTime){
+		this.updateTime = updateTime;
+	}
+
+	public String getUpdateTime(){
+		return this.updateTime;
+	}
+
+	public void setUpdateTimeStart(String updateTimeStart){
+		this.updateTimeStart = updateTimeStart;
+	}
+
+	public String getUpdateTimeStart(){
+		return this.updateTimeStart;
+	}
+
+	public void setUpdateTimeEnd(String updateTimeEnd){
+		this.updateTimeEnd = updateTimeEnd;
+	}
+
+	public String getUpdateTimeEnd(){
+		return this.updateTimeEnd;
+	}
 }

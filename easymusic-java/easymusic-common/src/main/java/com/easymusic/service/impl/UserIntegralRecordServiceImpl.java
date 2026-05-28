@@ -47,7 +47,40 @@ public class UserIntegralRecordServiceImpl implements UserIntegralRecordService 
             "redis.call('decrby', KEYS[1], deduct); " +
             "return 1; ";
 
+    private static final String FREEZE_LUA_SCRIPT =
+            "if redis.call('exists', KEYS[1]) == 0 then " +
+            "  return -1; " +
+            "end; " +
+            "local available = tonumber(redis.call('get', KEYS[1])); " +
+            "local deduct = tonumber(ARGV[1]); " +
+            "if available < deduct then " +
+            "  return 0; " +
+            "end; " +
+            "redis.call('decrby', KEYS[1], deduct); " +
+            "redis.call('incrby', KEYS[2], deduct); " +
+            "return 1; ";
+
+    private static final String CONFIRM_LUA_SCRIPT =
+            "local frozen = tonumber(redis.call('get', KEYS[1]) or 0); " +
+            "local amount = tonumber(ARGV[1]); " +
+            "if frozen >= amount then " +
+            "  redis.call('decrby', KEYS[1], amount); " +
+            "end; " +
+            "return 1; ";
+
+    private static final String CANCEL_LUA_SCRIPT =
+            "local amount = tonumber(ARGV[1]); " +
+            "redis.call('incrby', KEYS[1], amount); " +
+            "local frozen = tonumber(redis.call('get', KEYS[2]) or 0); " +
+            "if frozen >= amount then " +
+            "  redis.call('decrby', KEYS[2], amount); " +
+            "end; " +
+            "return 1; ";
+
     private final RedisScript<Long> deductScript = new DefaultRedisScript<>(DEDUCT_LUA_SCRIPT, Long.class);
+    private final RedisScript<Long> freezeScript = new DefaultRedisScript<>(FREEZE_LUA_SCRIPT, Long.class);
+    private final RedisScript<Long> confirmScript = new DefaultRedisScript<>(CONFIRM_LUA_SCRIPT, Long.class);
+    private final RedisScript<Long> cancelScript = new DefaultRedisScript<>(CANCEL_LUA_SCRIPT, Long.class);
 
     @Resource
     private RedisTemplate<String, Object> redisTemplate;
@@ -213,5 +246,75 @@ public class UserIntegralRecordServiceImpl implements UserIntegralRecordService 
             redisTemplate.opsForValue().increment(key, amount);
             log.info("Rebated quota of {} for user: {} in Redis", amount, userId);
         }
+    }
+
+    @Override
+    public boolean freezeQuota(String creationId, String userId, int amount) {
+        String availableKey = com.easymusic.entity.constants.Constants.REDIS_KEY_USER_QUOTA + userId;
+        String frozenKey = com.easymusic.entity.constants.Constants.REDIS_KEY_USER_QUOTA_FROZEN + userId;
+        
+        Long result = redisTemplate.execute(freezeScript, 
+                java.util.Arrays.asList(availableKey, frozenKey), 
+                String.valueOf(amount));
+        
+        if (result == null || result == -1) {
+            log.info("Quota cache miss for user: {} during freeze. Loading from database.", userId);
+            UserInfo userInfo = userInfoMapper.selectByUserId(userId);
+            if (userInfo == null) {
+                throw new BusinessException("用户不存在");
+            }
+            int currentIntegral = userInfo.getIntegral();
+            redisTemplate.opsForValue().set(availableKey, currentIntegral, 24, java.util.concurrent.TimeUnit.HOURS);
+            
+            result = redisTemplate.execute(freezeScript, 
+                    java.util.Arrays.asList(availableKey, frozenKey), 
+                    String.valueOf(amount));
+        }
+
+        if (result != null && result == 1) {
+            // Write detail key to Redis with 1 hour TTL
+            String detailKey = "easymusic:quota:freeze:detail:" + creationId;
+            String detailValue = userId + ":" + amount + ":" + System.currentTimeMillis();
+            redisTemplate.opsForValue().set(detailKey, detailValue, 1, java.util.concurrent.TimeUnit.HOURS);
+            log.info("Successfully froze quota of {} for user: {} in Redis (creationId: {})", amount, userId, creationId);
+            return true;
+        } else {
+            log.warn("Failed to freeze quota of {} for user: {} (insufficient quota)", amount, userId);
+            throw new BusinessException("用户积分不足");
+        }
+    }
+
+    @Override
+    public void confirmFreeze(String creationId, String userId, int amount) {
+        String frozenKey = com.easymusic.entity.constants.Constants.REDIS_KEY_USER_QUOTA_FROZEN + userId;
+        String detailKey = "easymusic:quota:freeze:detail:" + creationId;
+        
+        redisTemplate.execute(confirmScript, 
+                java.util.Collections.singletonList(frozenKey), 
+                String.valueOf(amount));
+        
+        redisTemplate.delete(detailKey);
+        log.info("Confirmed quota freeze of {} for user: {} in Redis (creationId: {})", amount, userId, creationId);
+    }
+
+    @Override
+    public void cancelFreeze(String creationId, String userId, int amount) {
+        String detailKey = "easymusic:quota:freeze:detail:" + creationId;
+        // Idempotency: only cancel if the detail key exists
+        Boolean exists = redisTemplate.hasKey(detailKey);
+        if (Boolean.FALSE.equals(exists)) {
+            log.info("Quota freeze for creationId: {} has already been processed or does not exist. Skipping cancelFreeze.", creationId);
+            return;
+        }
+
+        String availableKey = com.easymusic.entity.constants.Constants.REDIS_KEY_USER_QUOTA + userId;
+        String frozenKey = com.easymusic.entity.constants.Constants.REDIS_KEY_USER_QUOTA_FROZEN + userId;
+        
+        redisTemplate.execute(cancelScript, 
+                java.util.Arrays.asList(availableKey, frozenKey), 
+                String.valueOf(amount));
+        
+        redisTemplate.delete(detailKey);
+        log.info("Cancelled quota freeze of {} (rebated to available) for user: {} in Redis (creationId: {})", amount, userId, creationId);
     }
 }

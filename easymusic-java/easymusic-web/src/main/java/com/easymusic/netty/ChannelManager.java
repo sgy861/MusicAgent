@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 public class ChannelManager {
 
     public static final AttributeKey<String> USER_ID_KEY = AttributeKey.valueOf("userId");
+    public static final AttributeKey<Long> ACTIVE_SEQ_KEY = AttributeKey.valueOf("activeSeq");
 
     private final Map<String, Channel> userChannels = new ConcurrentHashMap<>();
     private final Map<String, ChannelGroup> roomChannels = new ConcurrentHashMap<>();
@@ -28,12 +29,21 @@ public class ChannelManager {
 
     private String nodeAddress;
 
+    public static final String IM_HEARTBEAT_PREFIX = "im:heartbeat:";
     private static final String IM_ROUTE_KEY_PREFIX = "im:route:";
     private static final String IM_NODE_USERS_PREFIX = "im:node:users:";
+
+    public void renewHeartbeat() {
+        if (nodeAddress != null) {
+            redisTemplate.opsForValue().set(
+                IM_HEARTBEAT_PREFIX + nodeAddress, "1", 15, TimeUnit.SECONDS);
+        }
+    }
 
     public void initNodeAddress(String nodeAddress) {
         this.nodeAddress = nodeAddress;
         log.info("ChannelManager initialized with nodeAddress: {}", nodeAddress);
+        renewHeartbeat(); // 注册时立即写入一次心跳
     }
 
     public String getNodeAddress() {

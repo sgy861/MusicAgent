@@ -23,13 +23,18 @@
 		<result column="settings" property="settings"  />
 		<!--创建时间-->
 		<result column="create_time" property="createTime"  />
+		<!--任务状态-->
+		<result column="task_status" property="taskStatus"  />
+		<!--更新时间-->
+		<result column="update_time" property="updateTime"  />
 	</resultMap>
 
 
 	<!-- 通用查询结果列-->
 	<sql id="base_column_list">
 		 m.creation_id,m.user_id,m.prompt,m.lyrics,m.model,
-		 m.music_type,m.mode_type,m.settings,m.create_time
+		 m.music_type,m.mode_type,m.settings,m.create_time,
+		 m.task_status,m.update_time
 	</sql>
 
 	<sql id="base_condition_filed">
@@ -60,6 +65,12 @@
 			<if test="query.createTime != null and query.createTime!=''">
 				 <![CDATA[ and  m.create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
 			</if>
+			<if test="query.taskStatus != null">
+				 and  m.task_status = #{query.taskStatus}
+			</if>
+			<if test="query.updateTime != null and query.updateTime!=''">
+				 <![CDATA[ and  m.update_time=str_to_date(#{query.updateTime}, '%Y-%m-%d') ]]>
+			</if>
 	</sql>
 
 	<!-- 通用查询条件列-->
@@ -89,6 +100,12 @@
 			</if>
 			<if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
 				 <![CDATA[ and  m.create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+			</if>
+			<if test="query.updateTimeStart!= null and query.updateTimeStart!=''">
+				 <![CDATA[ and  m.update_time>=str_to_date(#{query.updateTimeStart}, '%Y-%m-%d %H:%i:%s') ]]>
+			</if>
+			<if test="query.updateTimeEnd!= null and query.updateTimeEnd!=''">
+				 <![CDATA[ and  m.update_time<=str_to_date(#{query.updateTimeEnd}, '%Y-%m-%d %H:%i:%s') ]]>
 			</if>
 	 </where>
 	</sql>
@@ -140,6 +157,12 @@
 			<if test="bean.createTime != null">
 				 create_time,
 			</if>
+			<if test="bean.taskStatus != null">
+				 task_status,
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time,
+			</if>
 		 </trim>
 		 <trim prefix="values (" suffix=")" suffixOverrides="," >
 			<if test="bean.creationId!=null">
@@ -168,6 +191,12 @@
 			</if>
 			<if test="bean.createTime!=null">
 				 #{bean.createTime},
+			</if>
+			<if test="bean.taskStatus!=null">
+				 #{bean.taskStatus},
+			</if>
+			<if test="bean.updateTime!=null">
+				 #{bean.updateTime},
 			</if>
 		 </trim>
 	</insert>
@@ -362,6 +391,12 @@
 			<if test="bean.createTime != null">
 				 create_time = #{bean.createTime},
 			</if>
+			<if test="bean.taskStatus != null">
+				 task_status = #{bean.taskStatus},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
  		 </set>
  		 <include refid="query_condition" />
 	</update>
@@ -400,9 +435,15 @@
 			<if test="bean.createTime != null">
 				 create_time = #{bean.createTime},
 			</if>
+			<if test="bean.taskStatus != null">
+				 task_status = #{bean.taskStatus},
+			</if>
+			<if test="bean.updateTime != null">
+				 update_time = #{bean.updateTime},
+			</if>
  		 </set>
  		 where creation_id=#{creationId}
-	</update>
+ 	</update>
 
 	<!-- 根据CreationId删除-->
 	<delete id="deleteByCreationId">

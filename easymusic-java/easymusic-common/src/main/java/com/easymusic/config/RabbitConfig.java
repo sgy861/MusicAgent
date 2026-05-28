@@ -32,6 +32,10 @@ public class RabbitConfig {
     public static final String IM_DIRECT_EXCHANGE = "im.direct.exchange";
     public static final String IM_REVIEW_FANOUT_EXCHANGE = "im.review.fanout.exchange";
 
+    // AI Recommend Task Queue and Exchange
+    public static final String AI_RECOMMEND_TASK_QUEUE = "ai.recommend.task.queue";
+    public static final String AI_RECOMMEND_RESULT_EXCHANGE = "ai.recommend.result.exchange";
+
     // 1. Timeout Config
     @Bean
     public DirectExchange musicTimeoutDlx() {
@@ -120,5 +124,15 @@ public class RabbitConfig {
     @Bean
     public FanoutExchange imReviewFanoutExchange() {
         return new FanoutExchange(IM_REVIEW_FANOUT_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue aiRecommendTaskQueue() {
+        return new Queue(AI_RECOMMEND_TASK_QUEUE, true);
+    }
+
+    @Bean
+    public DirectExchange aiRecommendResultExchange() {
+        return new DirectExchange(AI_RECOMMEND_RESULT_EXCHANGE, true, false);
     }
 }

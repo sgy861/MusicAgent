@@ -42,7 +42,7 @@ services:
     image: quay.io/coreos/etcd:v3.5.5
     container_name: easymusic-milvus-etcd
     environment:
-      - ETCD_AUTO_COMPACTION_RETENTION=true
+      - ETCD_AUTO_COMPACTION_RETENTION=1
       - ETCD_AUTO_COMPACTION_RETENTION_INTERVAL=1
     volumes:
       - etcd_data:/etcd
@@ -88,7 +88,7 @@ services:
       - "8090:8090"
       - "8099:8099"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/easymusic?allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2B8&characterEncoding=utf8
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/easymusic?allowMultiQueries=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=GMT%2B8&characterEncoding=utf8
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_RABBITMQ_HOST=rabbitmq
       - MILVUS_HOST=milvus
@@ -108,7 +108,7 @@ services:
     ports:
       - "8091:8091"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/easymusic?allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2B8&characterEncoding=utf8
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/easymusic?allowMultiQueries=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=GMT%2B8&characterEncoding=utf8
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_RABBITMQ_HOST=rabbitmq
       - MILVUS_HOST=milvus

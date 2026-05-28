@@ -136,8 +136,36 @@ public class MusicCreation implements Serializable {
 		return this.createTime;
 	}
 
+	/**
+	 * AI任务状态 0:初始化 1:配额已冻结 2:AI任务已提交 3:AI任务处理中 4:已完成 5:已失败
+	 */
+	private Integer taskStatus;
+
+	/**
+	 * 更新时间
+	 */
+	@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+	@DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+	private Date updateTime;
+
+	public void setTaskStatus(Integer taskStatus){
+		this.taskStatus = taskStatus;
+	}
+
+	public Integer getTaskStatus(){
+		return this.taskStatus;
+	}
+
+	public void setUpdateTime(Date updateTime){
+		this.updateTime = updateTime;
+	}
+
+	public Date getUpdateTime(){
+		return this.updateTime;
+	}
+
 	@Override
 	public String toString (){
-		return "创作ID:"+(creationId == null ? "空" : creationId)+"，用户ID:"+(userId == null ? "空" : userId)+"，提示词:"+(prompt == null ? "空" : prompt)+"，歌词:"+(lyrics == null ? "空" : lyrics)+"，模型:"+(model == null ? "空" : model)+"，音乐类型 0:音乐 1:纯音乐:"+(musicType == null ? "空" : musicType)+"，模式 0:简单模式 1:专家模式:"+(modeType == null ? "空" : modeType)+"，设置信息:"+(settings == null ? "空" : settings)+"，创建时间:"+(createTime == null ? "空" : DateUtil.format(createTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()));
+		return "创作ID:"+(creationId == null ? "空" : creationId)+"，用户ID:"+(userId == null ? "空" : userId)+"，提示词:"+(prompt == null ? "空" : prompt)+"，歌词:"+(lyrics == null ? "空" : lyrics)+"，模型:"+(model == null ? "空" : model)+"，音乐类型 0:音乐 1:纯音乐:"+(musicType == null ? "空" : musicType)+"，模式 0:简单模式 1:专家模式:"+(modeType == null ? "空" : modeType)+"，设置信息:"+(settings == null ? "空" : settings)+"，创建时间:"+(createTime == null ? "空" : DateUtil.format(createTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()))+"，任务状态:"+(taskStatus == null ? "空" : taskStatus)+"，更新时间:"+(updateTime == null ? "空" : DateUtil.format(updateTime, DateTimePatternEnum.YYYY_MM_DD_HH_MM_SS.getPattern()));
 	}
 }

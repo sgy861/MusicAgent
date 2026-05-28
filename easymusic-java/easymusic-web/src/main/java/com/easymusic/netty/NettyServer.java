@@ -25,6 +25,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
+import org.springframework.data.redis.core.RedisTemplate;
 
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
@@ -38,6 +39,9 @@ public class NettyServer implements ApplicationRunner {
 
     @Resource
     private RedisComponent redisComponent;
+
+    @Resource
+    private RedisTemplate<String, Object> redisTemplate;
 
     @Resource
     private ChannelManager channelManager;
@@ -100,6 +104,8 @@ public class NettyServer implements ApplicationRunner {
                     // 启用 PooledByteBufAllocator 内存池分配器以复用 ByteBuf 内存，避免频繁垃圾回收
                     .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
                     .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
+                    // 配置 WriteBufferWaterMark 建立背压流控，防止发送队列积压 OOM
+                    .childOption(ChannelOption.WRITE_BUFFER_WATER_MARK, new io.netty.channel.WriteBufferWaterMark(32 * 1024, 64 * 1024))
                     // 装配 pipeline
                     .childHandler(new WebSocketChannelInitializer(redisComponent, channelManager, imMessageService, recommendAgentService));
 
@@ -137,6 +143,12 @@ public class NettyServer implements ApplicationRunner {
                 .to(new FanoutExchange(RabbitConfig.IM_REVIEW_FANOUT_EXCHANGE));
         amqpAdmin.declareBinding(fanoutBinding);
 
+        // 3b. 绑定 AI 推荐结果交换机，路由键为当前节点地址，确保推荐流式 Token 正确路由回当前 Netty 节点
+        Binding aiResultBinding = BindingBuilder.bind(queue)
+                .to(new DirectExchange(RabbitConfig.AI_RECOMMEND_RESULT_EXCHANGE))
+                .with(nodeAddress);
+        amqpAdmin.declareBinding(aiResultBinding);
+
         // 4. 配置 Spring AMQP 监听容器，进行手动 Ack 与消息状态流转
         rabbitListenerContainer = new SimpleMessageListenerContainer();
         rabbitListenerContainer.setConnectionFactory(connectionFactory);
@@ -152,9 +164,18 @@ public class NettyServer implements ApplicationRunner {
                 log.info("MQ Consumer: Received msgType={} for receiver={}", imMessage.getMsgType(), imMessage.getReceiverId());
 
                 if ("CHAT".equalsIgnoreCase(imMessage.getMsgType())) {
+                    // 双重幂等校验，防止 MQ 重复投递导致消息重复推送
+                    String idempotentKey = "im:msg:delivered:" + imMessage.getMessageId();
+                    Boolean isNew = redisTemplate.opsForValue().setIfAbsent(idempotentKey, "1", 24, java.util.concurrent.TimeUnit.HOURS);
+                    if (Boolean.FALSE.equals(isNew)) {
+                        log.info("Duplicate message detected, skipping: {}", imMessage.getMessageId());
+                        channel.basicAck(deliveryTag, false);
+                        return;
+                    }
+
                     io.netty.channel.Channel wsChannel = channelManager.getUserChannel(imMessage.getReceiverId());
-                    if (wsChannel != null && wsChannel.isActive()) {
-                        // 本地有活跃的 WebSocket 通道，写入推送
+                    if (wsChannel != null && wsChannel.isActive() && wsChannel.isWritable()) {
+                        // 本地有活跃且可写的 WebSocket 通道，写入推送
                         wsChannel.writeAndFlush(new TextWebSocketFrame(JsonUtils.convertObj2Json(imMessage)));
                         log.info("Pushed CHAT message to user {} successfully.", imMessage.getReceiverId());
 
@@ -163,7 +184,7 @@ public class NettyServer implements ApplicationRunner {
                         updateBean.setStatus(1);
                         imMessageService.updateImMessageByMessageId(updateBean, imMessage.getMessageId());
                     } else {
-                        log.info("User {} is offline on this node. Message stays in DB as unread.", imMessage.getReceiverId());
+                        log.info("User {} is offline or connection is slow (not writable) on this node. Message stays in DB as unread.", imMessage.getReceiverId());
                     }
                 } else if ("REVIEW".equalsIgnoreCase(imMessage.getMsgType())) {
                     // 点评消息：广播推送给订阅该 musicId 房间的所有本地用户
@@ -171,6 +192,28 @@ public class NettyServer implements ApplicationRunner {
                     if (group != null && !group.isEmpty()) {
                         group.writeAndFlush(new TextWebSocketFrame(JsonUtils.convertObj2Json(imMessage)));
                         log.info("Broadcasted REVIEW message to room group {} size={}.", imMessage.getReceiverId(), group.size());
+                    }
+                } else if ("RECOMMEND".equalsIgnoreCase(imMessage.getMsgType())) {
+                    // AI 推荐流式结果回传
+                    io.netty.channel.Channel wsChannel = channelManager.getUserChannel(imMessage.getReceiverId());
+                    if (wsChannel != null && wsChannel.isActive()) {
+                        // 解析 content 中包装越来越多 seq 和 payload
+                        com.alibaba.fastjson2.JSONObject contentObj = com.alibaba.fastjson2.JSONObject.parseObject(imMessage.getContent());
+                        Long msgSeq = contentObj.getLong("seq");
+                        String payload = contentObj.getString("payload");
+
+                        // 校验 seq 过滤过期消息
+                        Long activeSeq = wsChannel.attr(ChannelManager.ACTIVE_SEQ_KEY).get();
+                        if (activeSeq != null && activeSeq.equals(msgSeq)) {
+                            if (wsChannel.isWritable()) {
+                                wsChannel.writeAndFlush(new TextWebSocketFrame(payload));
+                            } else {
+                                log.warn("Channel for user {} is not writable (overloaded). Discarding RECOMMEND stream token.", imMessage.getReceiverId());
+                            }
+                        } else {
+                            log.debug("Discarding stale RECOMMEND token for user {} (activeSeq: {}, msgSeq: {})",
+                                    imMessage.getReceiverId(), activeSeq, msgSeq);
+                        }
                     }
                 }
 

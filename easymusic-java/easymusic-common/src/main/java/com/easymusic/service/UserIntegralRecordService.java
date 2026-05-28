@@ -76,4 +76,10 @@ public interface UserIntegralRecordService {
     boolean preDeductUserQuota(String userId, int amount);
 
     void rebateUserQuota(String userId, int amount);
+
+    boolean freezeQuota(String creationId, String userId, int amount);
+
+    void confirmFreeze(String creationId, String userId, int amount);
+
+    void cancelFreeze(String creationId, String userId, int amount);
 }

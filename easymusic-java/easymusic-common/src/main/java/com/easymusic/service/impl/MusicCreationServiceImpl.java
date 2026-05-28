@@ -61,6 +61,10 @@ public class MusicCreationServiceImpl implements MusicCreationService {
     @Resource
     private LocalMessageService localMessageService;
 
+    @Resource
+    @org.springframework.context.annotation.Lazy
+    private MusicCreationService self;
+
     /**
      * 根据条件查询列表
      */
@@ -165,7 +169,6 @@ public class MusicCreationServiceImpl implements MusicCreationService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public List<String> createMusic(MusicCreation musicCreation, MusicSettingDTO musicSettingDTO) {
         MusicTypeEnum musicTypeEnum = MusicTypeEnum.getByType(musicCreation.getMusicType());
         if (null == musicTypeEnum) {
@@ -176,47 +179,22 @@ public class MusicCreationServiceImpl implements MusicCreationService {
 
         List<SysDict> sysDictSubList = redisComponent.getDictSubList(musicTypeEnum.getDictCode());
         Optional<SysDict> dictInfo = sysDictSubList.stream().filter(value -> value.getDictCode().equals(musicCreation.getModel())).findFirst();
-        SysDict sysDict = dictInfo.get();
-        if (null == sysDict) {
+        if (!dictInfo.isPresent()) {
             throw new BusinessException("系统配置错误，请联系管理员");
         }
+        SysDict sysDict = dictInfo.get();
         String creationId = StringTools.getRandomString(Constants.LENGTH_15);
 
         Integer integral = Integer.parseInt(sysDict.getDictValue());
         String apiCode = modelInfo.apiCode;
 
-        // Redis Lua 脚本内存级预扣减配额，防范高并发下的额度超发
-        userIntegralRecordService.preDeductUserQuota(musicCreation.getUserId(), integral);
+        // 1. 第一阶段本地写库 + 额度冻结事务
+        self.createMusicLocal(musicCreation, musicSettingDTO, creationId, integral);
 
-        // 注册事务同步器，在数据库事务提交失败/回滚时，对 Redis 中的预扣减配额进行自动回补
-        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
-            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
-                new org.springframework.transaction.support.TransactionSynchronization() {
-                    @Override
-                    public void afterCompletion(int status) {
-                        if (status != STATUS_COMMITTED) {
-                            log.info("Database transaction failed or rolled back. Rebating pre-deducted quota of {} for user: {} in Redis", integral, musicCreation.getUserId());
-                            userIntegralRecordService.rebateUserQuota(musicCreation.getUserId(), integral);
-                        }
-                    }
-                }
-            );
-        }
-
-        // 扣减积分
-        userIntegralRecordService.changeUserIntegral(UserIntegralRecordTypeEnum.CREATE_MUSIC, creationId, musicCreation.getUserId(), -integral, null);
-
-        Date curDate = new Date();
-
-        musicCreation.setCreationId(creationId);
-        musicCreation.setSettings(JsonUtils.convertObj2Json(musicSettingDTO));
-        musicCreation.setCreateTime(curDate);
-        musicCreationMapper.insert(musicCreation);
-
-
+        // 2. 外部 HTTP 创作 API 调用 (事务外执行，防止数据库连接池饥饿)
         String prompt = musicCreation.getPrompt();
         MusicCreateApi musicCreateApi = (MusicCreateApi) SpringContext.getBean(apiCode);
-        List<String> itemIds;
+        List<String> itemIds = null;
         if (MusicModeTypeEnum.ADVANCED.getModeType().equals(musicCreation.getModeType())) {
             try {
                 for (MusicSettingEnum settingEnum : MusicSettingEnum.values()) {
@@ -229,36 +207,87 @@ public class MusicCreationServiceImpl implements MusicCreationService {
                     prompt = prompt + " " + settingEnum.getTypeDesc() + ":" + obj;
                 }
             } catch (Exception e) {
-                log.error("获取音乐设置信息失败");
+                log.error("获取音乐设置信息失败", e);
             }
         }
-        if (MusicTypeEnum.MUSIC.getType().equals(musicCreation.getMusicType())) {
-            itemIds = musicCreateApi.createMusic(model, prompt, musicCreation.getLyrics());
-        } else {
-            itemIds = musicCreateApi.createPureMusic(model, prompt);
-        }
-        if (itemIds == null || itemIds.isEmpty()) {
-            throw new BusinessException("音乐创作失败");
-        }
-        /**
-         * 插入音乐信息
-         */
-        List<MusicInfo> musicInfoList = new ArrayList<>();
 
+        try {
+            if (MusicTypeEnum.MUSIC.getType().equals(musicCreation.getMusicType())) {
+                itemIds = musicCreateApi.createMusic(model, prompt, musicCreation.getLyrics());
+            } else {
+                itemIds = musicCreateApi.createPureMusic(model, prompt);
+            }
+        } catch (Exception e) {
+            log.error("调用外部音乐创作API发生网络异常，触发解冻与状态回滚", e);
+            rollbackLocalCreation(creationId, musicCreation.getUserId(), integral);
+            throw new BusinessException("AI创作服务网络请求失败: " + e.getMessage());
+        }
+
+        if (itemIds == null || itemIds.isEmpty()) {
+            log.error("外部音乐创作API返回失败或空任务列表，触发解冻与状态回滚");
+            rollbackLocalCreation(creationId, musicCreation.getUserId(), integral);
+            throw new BusinessException("AI创作任务生成失败，请稍后重试");
+        }
+
+        // 3. 第二阶段生成子任务写入与最终提交事务
+        try {
+            return self.saveMusicInfoAndSubmit(creationId, musicCreation.getUserId(), itemIds, apiCode, musicCreation.getMusicType());
+        } catch (Exception e) {
+            log.error("保存子任务数据失败，执行最终解冻", e);
+            userIntegralRecordService.cancelFreeze(creationId, musicCreation.getUserId(), integral);
+            throw e;
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void createMusicLocal(MusicCreation musicCreation, MusicSettingDTO musicSettingDTO, String creationId, int integral) {
+        // Redis Lua 脚本两阶段冻结配额
+        userIntegralRecordService.freezeQuota(creationId, musicCreation.getUserId(), integral);
+
+        // 注册事务同步器，在数据库事务提交失败/回滚时，对 Redis 中的冻结配额进行自动释放
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCompletion(int status) {
+                        if (status != STATUS_COMMITTED) {
+                            log.info("Database transaction failed or rolled back. Cancelling quota freeze of {} for user: {} in Redis", integral, musicCreation.getUserId());
+                            userIntegralRecordService.cancelFreeze(creationId, musicCreation.getUserId(), integral);
+                        }
+                    }
+                }
+            );
+        }
+
+        Date curDate = new Date();
+        musicCreation.setCreationId(creationId);
+        musicCreation.setSettings(JsonUtils.convertObj2Json(musicSettingDTO));
+        musicCreation.setCreateTime(curDate);
+        musicCreation.setUpdateTime(curDate);
+        musicCreation.setTaskStatus(AiTaskStatusEnum.QUOTA_FROZEN.getStatus());
+        musicCreationMapper.insert(musicCreation);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public List<String> saveMusicInfoAndSubmit(String creationId, String userId, List<String> itemIds, String apiCode, Integer musicType) {
+        Date curDate = new Date();
+        List<MusicInfo> musicInfoList = new ArrayList<>();
         List<String> musicIdList = new ArrayList<>();
 
         for (String item : itemIds) {
             MusicInfo musicInfo = new MusicInfo();
             musicInfo.setMusicId(StringTools.getRandomNumber(Constants.LENGTH_12));
-            musicInfo.setUserId(musicCreation.getUserId());
-            musicInfo.setCreationId(musicCreation.getCreationId());
+            musicInfo.setUserId(userId);
+            musicInfo.setCreationId(creationId);
             musicInfo.setGoodCount(0);
             musicInfo.setPlayCount(0);
             musicInfo.setCreateTime(curDate);
             musicInfo.setCommendType(CommendTypeEnum.NOT_COMMEND.getType());
             musicInfo.setMusicStatus(MusicStatusEnum.CREATING.getStatus());
             musicInfo.setTaskId(item);
-            musicInfo.setMusicType(musicCreation.getMusicType());
+            musicInfo.setMusicType(musicType);
             musicInfoList.add(musicInfo);
 
             //将任务加入到本地消息表，在事务提交后自动发送到 RabbitMQ 队列进行延迟处理
@@ -266,7 +295,7 @@ public class MusicCreationServiceImpl implements MusicCreationService {
             musicTaskDto.setApiCode(apiCode);
             musicTaskDto.setMusicId(musicInfo.getMusicId());
             musicTaskDto.setTaskId(item);
-            musicTaskDto.setMusicType(musicCreation.getMusicType());
+            musicTaskDto.setMusicType(musicType);
 
             // 投递 30s 周期查询检查消息
             localMessageService.createAndSaveMessage(RabbitConfig.MUSIC_QUERY_DELAY_QUEUE, null, null, musicTaskDto);
@@ -276,7 +305,35 @@ public class MusicCreationServiceImpl implements MusicCreationService {
             musicIdList.add(musicInfo.getMusicId());
         }
         musicInfoMapper.insertBatch(musicInfoList);
+
+        // 更新任务状态为已提交（乐观锁：仅当为 QUOTA_FROZEN 时更新）
+        MusicCreation updateCreation = new MusicCreation();
+        updateCreation.setTaskStatus(AiTaskStatusEnum.AI_SUBMITTED.getStatus());
+        updateCreation.setUpdateTime(new Date());
+
+        MusicCreationQuery query = new MusicCreationQuery();
+        query.setCreationId(creationId);
+        query.setTaskStatus(AiTaskStatusEnum.QUOTA_FROZEN.getStatus());
+        musicCreationMapper.updateByParam(updateCreation, query);
+
         return musicIdList;
+    }
+
+    private void rollbackLocalCreation(String creationId, String userId, int integral) {
+        try {
+            userIntegralRecordService.cancelFreeze(creationId, userId, integral);
+            MusicCreation updateCreation = new MusicCreation();
+            updateCreation.setTaskStatus(AiTaskStatusEnum.FAILED.getStatus());
+            updateCreation.setUpdateTime(new Date());
+            
+            // 只有当当前状态仍然是 QUOTA_FROZEN 时才执行更新
+            MusicCreationQuery query = new MusicCreationQuery();
+            query.setCreationId(creationId);
+            query.setTaskStatus(AiTaskStatusEnum.QUOTA_FROZEN.getStatus());
+            musicCreationMapper.updateByParam(updateCreation, query);
+        } catch (Exception ex) {
+            log.error("回滚本地创作状态及解冻额度失败, creationId: {}", creationId, ex);
+        }
     }
 
     record ModelInfo(String model, String apiCode) {

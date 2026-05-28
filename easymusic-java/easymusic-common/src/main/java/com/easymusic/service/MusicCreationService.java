@@ -76,4 +76,8 @@ public interface MusicCreationService {
      * @param musicCreation
      */
     List<String> createMusic(MusicCreation musicCreation, MusicSettingDTO settingDTO);
+
+    void createMusicLocal(MusicCreation musicCreation, MusicSettingDTO musicSettingDTO, String creationId, int integral);
+
+    List<String> saveMusicInfoAndSubmit(String creationId, String userId, List<String> itemIds, String apiCode, Integer musicType);
 }
